@@ -9,6 +9,8 @@ import {
 } from "expo-audio";
 import { useEffect, useState } from "react";
 import API_ENDPOINTS from "../config/api";
+import OffCanvas from "../components/ListAudio";
+
 export default function Index() {
   // Enable audio recording and playback
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -80,19 +82,24 @@ export default function Index() {
   };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Button
-        title={recorderState.isRecording ? "Stop Recording" : "Start Recording"}
-        onPress={recorderState.isRecording ? stopRecording : startRecording}
-      />
-      <Button title="replay" onPress={handleReplayAudio} />
-      <Button title="Submit Audio" onPress={handleAudioSubmission} />
+    <View>
+      <OffCanvas />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Button
+          title={
+            recorderState.isRecording ? "Stop Recording" : "Start Recording"
+          }
+          onPress={recorderState.isRecording ? stopRecording : startRecording}
+        />
+        <Button title="replay" onPress={handleReplayAudio} />
+        <Button title="Submit Audio" onPress={handleAudioSubmission} />
+      </View>
     </View>
   );
 }

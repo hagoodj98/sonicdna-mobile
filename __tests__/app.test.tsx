@@ -5,6 +5,10 @@ import {
   waitFor,
 } from "@testing-library/react-native";
 
+import * as ExpoAudio from "expo-audio";
+import Index from "../app/index";
+import API_ENDPOINTS from "../config/api";
+
 jest.mock("expo-audio", () => ({
   __esModule: true,
   AudioModule: {
@@ -32,9 +36,9 @@ jest.mock("expo-audio", () => ({
   })),
 }));
 
-import * as ExpoAudio from "expo-audio";
-import Index from "../app/index";
-import API_ENDPOINTS from "../config/api";
+const audioFilesResponse = {
+  audioFiles: ["kick.wav", "snare.wav", "hat.wav"],
+};
 
 const grantedPermissionResponse: Awaited<
   ReturnType<typeof ExpoAudio.AudioModule.requestRecordingPermissionsAsync>
@@ -57,7 +61,15 @@ describe("Index screen", () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
-    fetchMock.mockResolvedValue({ status: 200 });
+    fetchMock.mockImplementation((input: string | URL | Request) => {
+      if (input === API_ENDPOINTS.GET_AUDIO) {
+        return Promise.resolve({
+          json: jest.fn().mockResolvedValue(audioFilesResponse),
+        });
+      }
+
+      return Promise.resolve({ status: 200 });
+    });
     alertMock.mockReset();
     requestPermissionsMock.mockClear();
     requestPermissionsMock.mockResolvedValue(grantedPermissionResponse);
@@ -68,8 +80,16 @@ describe("Index screen", () => {
     global.alert = alertMock as typeof alert;
   });
 
-  it("renders the current recording controls", () => {
+  const renderIndex = async () => {
     render(<Index />);
+
+    await waitFor(() => {
+      expect(screen.getByText("kick.wav")).toBeTruthy();
+    });
+  };
+
+  it("renders the current recording controls", async () => {
+    await renderIndex();
 
     expect(screen.getByText("Start Recording")).toBeTruthy();
     expect(screen.getByText("replay")).toBeTruthy();
@@ -77,7 +97,7 @@ describe("Index screen", () => {
   });
 
   it("submits audio to the configured endpoint", async () => {
-    render(<Index />);
+    await renderIndex();
 
     fireEvent.press(screen.getByText("Submit Audio"));
 
@@ -100,7 +120,7 @@ describe("Index screen", () => {
   });
 
   it("requests recording permissions on mount", async () => {
-    render(<Index />);
+    await renderIndex();
 
     await waitFor(() => {
       expect(requestPermissionsMock).toHaveBeenCalledTimes(1);
