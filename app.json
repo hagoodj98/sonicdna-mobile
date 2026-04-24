@@ -49,6 +49,13 @@
           "enableBackgroundRecording": true
         }
       ],
+      [
+        "expo-file-system",
+        {
+          "supportsOpeningDocumentsInPlace": true,
+          "enableFileSharing": true
+        }
+      ],
       "expo-asset"
     ],
     "experiments": {

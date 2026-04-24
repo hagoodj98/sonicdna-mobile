@@ -1,4 +1,4 @@
-import { Alert, Button, View } from "react-native";
+import { Alert, Button, View, Text } from "react-native";
 import {
   useAudioRecorder,
   AudioModule,
@@ -10,6 +10,8 @@ import {
 import { useEffect, useState } from "react";
 import API_ENDPOINTS from "../config/api";
 import OffCanvas from "../components/ListAudio";
+import CustomButton from "../components/ui/CustomButton";
+import { Directory, File, Paths } from "expo-file-system";
 
 export default function Index() {
   // Enable audio recording and playback
@@ -28,6 +30,30 @@ export default function Index() {
   const stopRecording = async () => {
     await audioRecorder.stop(); // Stop recording audio
     const audioURI = audioRecorder.uri; // Get the URI of the recorded audio file
+    //send audio file via expo-file-system
+
+    if (audioURI) {
+      try {
+        const audioFile = new File(audioURI); // Create a File object from the recorded audio URI
+        const audioRecordingsDir = new Directory(
+          Paths.cache,
+          "audioRecordings",
+        );
+        const dirExists = audioRecordingsDir.exists;
+        if (!dirExists) {
+          await audioRecordingsDir.create(); // Create a directory for audio recordings if it doesn't exist
+        }
+        // Move the recorded audio file to the audioRecordings directory for better organization
+        audioFile.move(audioRecordingsDir); // Move the file to a new directory for better organization
+        //list files in the audioRecordings directory for debugging purposes
+
+        const files = await audioRecordingsDir.list(); // Read the contents of the audioRecordings directory
+        console.log("Audio recordings directory contents:", files); // Log the contents of the audioRecordings directory for debugging purposes
+      } catch (error) {
+        console.error("Error handling audio file:", error);
+      }
+    }
+
     setAudioURI(audioURI); // Update the state with the URI of the recorded audio
   };
 
@@ -82,23 +108,34 @@ export default function Index() {
   };
 
   return (
-    <View>
-      <OffCanvas />
+    <View
+      style={{
+        justifyContent: "space-between",
+        flex: 1,
+        padding: 20,
+        marginTop: 50,
+      }}
+    >
+      <Text>Sound DNA</Text>
+
+      <View style={{ borderWidth: 1, borderColor: "black" }}>
+        <View style={{ backgroundColor: "lightgray", padding: 10 }}>
+          <OffCanvas />
+        </View>
+      </View>
       <View
         style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
+          flexDirection: "row",
+          justifyContent: "space-around",
+          marginTop: 20,
         }}
       >
-        <Button
-          title={
-            recorderState.isRecording ? "Stop Recording" : "Start Recording"
-          }
+        <CustomButton
+          title={recorderState.isRecording ? "Stop Recording" : "Record"}
           onPress={recorderState.isRecording ? stopRecording : startRecording}
         />
-        <Button title="replay" onPress={handleReplayAudio} />
-        <Button title="Submit Audio" onPress={handleAudioSubmission} />
+        <CustomButton title="replay" onPress={handleReplayAudio} />
+        <CustomButton title="Submit Audio" onPress={handleAudioSubmission} />
       </View>
     </View>
   );
