@@ -12,6 +12,7 @@ import API_ENDPOINTS from "../config/api";
 import OffCanvas from "../components/ListAudio";
 import CustomButton from "../components/ui/CustomButton";
 import { Directory, File, Paths } from "expo-file-system";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Index() {
   // Enable audio recording and playback
@@ -19,6 +20,7 @@ export default function Index() {
   // Set the audio module to active so it can record and play audio
   const recorderState = useAudioRecorderState(audioRecorder);
   const [audioURI, setAudioURI] = useState<string | null>(null); // State to hold the URI of the recorded audio
+  const [audioDrafts, setAudioDrafts] = useState<string[]>([]); //in memory drafts of audio files that haven't been submitted yet
 
   const player = useAudioPlayer(
     audioURI, // Set the URI of the audio player to the recorded audio file
@@ -35,20 +37,31 @@ export default function Index() {
     if (audioURI) {
       try {
         const audioFile = new File(audioURI); // Create a File object from the recorded audio URI
+
+        //store metadata in async storage
+        /*
+        let audioMetadata = {
+          id: `${Date.now()}`, // Generate a unique ID for the audio file using the current timestamp
+          localUri: audioURI, // Store the URI of the recorded audio file
+          timestamp: Date.now(), // Store the timestamp of when the audio was recorded
+          status: "recorded", // Store the status of the audio file (e.g., "recorded", "submitted", etc.)
+          duration: recorderState.durationMillis, // Store the duration of the recorded audio in milliseconds
+        };
+      
+
+        await AsyncStorage.setItem(
+          "lastAudioURI",
+          JSON.stringify(audioMetadata),
+        ); // Store the URI and timestamp of the recorded audio in AsyncStorage for later retrieval
+  */
         const audioRecordingsDir = new Directory(
           Paths.cache,
           "audioRecordings",
         );
-        const dirExists = audioRecordingsDir.exists;
-        if (!dirExists) {
-          await audioRecordingsDir.create(); // Create a directory for audio recordings if it doesn't exist
-        }
-        // Move the recorded audio file to the audioRecordings directory for better organization
-        audioFile.move(audioRecordingsDir); // Move the file to a new directory for better organization
-        //list files in the audioRecordings directory for debugging purposes
 
-        const files = await audioRecordingsDir.list(); // Read the contents of the audioRecordings directory
-        console.log("Audio recordings directory contents:", files); // Log the contents of the audioRecordings directory for debugging purposes
+        audioFile.move(audioRecordingsDir); // Move the file to a new directory for better organization
+        setAudioDrafts((prevDrafts) => [...prevDrafts, audioURI]); // Add the URI of the recorded audio to the in-memory drafts state for later submission
+        //list files in the audioRecordings directory for debugging purposes
       } catch (error) {
         console.error("Error handling audio file:", error);
       }
@@ -72,8 +85,20 @@ export default function Index() {
         interruptionMode: "doNotMix", // Do not mix audio with other apps
       }); // Set the audio module to active so it can record and play audio
     };
+    const loadAudios = async () => {
+      const audioRecordingsDir = new Directory(Paths.cache, "audioRecordings");
+      const dirExists = audioRecordingsDir.exists;
+      if (!dirExists) {
+        await audioRecordingsDir.create(); // Create a directory for audio recordings if it doesn't exist
+      }
+      const files = await audioRecordingsDir.list(); // Read the contents of the audioRecordings directory
+      const audioFiles = files.filter((file) => file.name.endsWith(".m4a")); // Filter the files to only include audio files with the .m4a extension
+      setAudioDrafts(audioFiles.map((file) => file.uri)); // Update the in-memory drafts state with the URIs of the audio files in the audioRecordings directory
+    };
+
     // Request permissions when the component mounts
     requestPermissions();
+    loadAudios(); // Load existing audio files from the audioRecordings directory when the component mounts
   }, []);
   const handleAudioSubmission = async () => {
     if (recorderState.isRecording) {
@@ -117,7 +142,16 @@ export default function Index() {
       }}
     >
       <Text>Sound DNA</Text>
-
+      {audioDrafts.length > 0 && (
+        <View style={{ marginBottom: 20 }}>
+          <Text style={{ fontWeight: "bold", marginBottom: 10 }}>
+            Audio Drafts:
+          </Text>
+          {audioDrafts.map((draftURI, index) => (
+            <Text key={index}>{draftURI}</Text> // Display the URIs of the audio drafts for debugging purposes
+          ))}
+        </View>
+      )}
       <View style={{ borderWidth: 1, borderColor: "black" }}>
         <View style={{ backgroundColor: "lightgray", padding: 10 }}>
           <OffCanvas />
