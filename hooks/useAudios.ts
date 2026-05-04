@@ -37,11 +37,13 @@ export const useAudios = () => {
         await audioRecordingsDir.create(); // Create a directory for audio recordings if it doesn't exist
       }
       const files = await audioRecordingsDir.list(); // Read the contents of the audioRecordings directory
+
       const audioFiles = files.filter((file) => file.name.endsWith(".m4a")); // Filter the files to only include audio files with the .m4a extension
       setAudioDrafts(
         audioFiles.map((file) => ({
           id: file.name,
           localUri: file.uri,
+          label: file.name,
           timestamp: Date.now(),
           status: "draft",
           duration: 0, // You can update this with the actual duration if available

@@ -9,11 +9,13 @@ type ListAudioProps = {
   currentSound?: string | null;
   audioDrafts?: AudioDraft[]; // Optional prop to pass audio drafts directly
   setAudioDrafts?: React.Dispatch<React.SetStateAction<AudioDraft[]>>; // Optional prop to pass the setAudioDrafts function directly
+  uploadAudio: (audio: AudioDraft) => void; // Optional prop to pass the uploadAudio function directly
 };
 
 const ListAudio = ({
   playAudio,
   currentSound,
+  uploadAudio,
   audioDrafts: propAudioDrafts,
   setAudioDrafts: propSetAudioDrafts,
 }: ListAudioProps) => {
@@ -21,6 +23,9 @@ const ListAudio = ({
   const setDrafts = propSetAudioDrafts; // Use the prop if provided, otherwise use the hook's state
   const handlePlayAudio = (audio: AudioDraft) => {
     playAudio(audio);
+  };
+  const handleUploadAudio = (audio: AudioDraft) => {
+    uploadAudio(audio);
   };
 
   return (
@@ -40,6 +45,15 @@ const ListAudio = ({
             size={20}
             onPress={() => {
               handlePlayAudio(audio); // Call the function to play the selected audio draft when the play/pause button is pressed
+            }}
+          />
+          <IconButton
+            icon="upload"
+            size={20}
+            onPress={() => {
+              // Implement the logic to upload the audio draft to the server here
+              // You can use the localUri of the audio draft to access the file and upload it using your preferred method (e.g., fetch, axios, etc.)
+              handleUploadAudio(audio); // Call the function to upload the selected audio draft
             }}
           />
           <IconButton

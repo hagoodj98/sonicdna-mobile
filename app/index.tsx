@@ -69,6 +69,8 @@ export default function Index() {
           JSON.stringify(audioMetadata),
         ); // Store the URI and timestamp of the recorded audio in AsyncStorage for later retrieval
   */
+        const rename = `recording-${audioDrafts.length + 1}`; // Generate a new name for the recorded audio file using a combination of a prefix, the number of existing audio drafts, and a timestamp for uniqueness
+        audioFile.rename(rename); // Rename the recorded audio file to include a timestamp for better organization
         const audioRecordingsDir = new Directory(
           Paths.cache,
           "audioRecordings",
@@ -82,7 +84,7 @@ export default function Index() {
           ...prevDrafts,
           {
             id: audioFile.name,
-            label: `recording-${prevDrafts.length + 1}`, // Set a label for the audio draft, you can customize this as needed
+            label: audioFile.name, // Set a label for the audio draft, you can customize this as needed
             localUri: storedUri,
             timestamp: Date.now(),
             status: "draft",
@@ -179,6 +181,7 @@ export default function Index() {
             audioDrafts={audioDrafts}
             setAudioDrafts={setAudioDrafts}
             currentSound={currentAudioPlaying} // Pass the currentAudioPlaying state to the ListAudio component to determine which audio draft is currently playing
+            uploadAudio={(audio) => {}}
             playAudio={(audio) => handleAudioPlayback(audio)}
           />
         </View>
@@ -194,12 +197,6 @@ export default function Index() {
           width="45%"
           title={recorderState.isRecording ? "Stop Recording" : "Record"}
           onPress={recorderState.isRecording ? stopRecording : startRecording}
-        />
-
-        <CustomButton
-          width="45%"
-          title="Upload"
-          onPress={handleAudioSubmission}
         />
       </View>
     </View>
