@@ -1,4 +1,4 @@
-import { Alert, Button, View, Text } from "react-native";
+import { Alert, View, Text } from "react-native";
 import {
   useAudioRecorder,
   AudioModule,
@@ -12,19 +12,34 @@ import API_ENDPOINTS from "../config/api";
 import OffCanvas from "../components/ListAudio";
 import CustomButton from "../components/ui/CustomButton";
 import { Directory, File, Paths } from "expo-file-system";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAudios } from "@/hooks/useAudios";
+import { AudioDraft } from "@/types";
 
 export default function Index() {
   // Enable audio recording and playback
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   // Set the audio module to active so it can record and play audio
   const recorderState = useAudioRecorderState(audioRecorder);
-  const [audioURI, setAudioURI] = useState<string | null>(null); // State to hold the URI of the recorded audio
-  const [audioDrafts, setAudioDrafts] = useState<string[]>([]); //in memory drafts of audio files that haven't been submitted yet
-
-  const player = useAudioPlayer(
-    audioURI, // Set the URI of the audio player to the recorded audio file
+  const [currentAudioPlaying, setCurrentAudioPlaying] = useState<string | null>(
+    null,
+  ); // State to hold the URI of the recorded audio
+  const [playbackUri, setPlaybackUri] = useState<string | null>(null);
+  const [latestRecordedUri, setLatestRecordedUri] = useState<string | null>(
+    null,
   );
+  const { audioDrafts, setAudioDrafts } = useAudios(); // Use the custom hook to get audio data and loading state
+  // create audio player for all recorded audio files using the useAudioPlayer hook from expo-audio and set the URI of the audio player to the recorded audio file
+  const player = useAudioPlayer(playbackUri);
+  // When the playbackUri state changes (i.e., when a new audio file is selected for playback), the useEffect hook will be triggered. Inside the useEffect, we check if there is a valid playbackUri. If there is, we seek the audio player to the beginning of the audio file (seekTo(0)) and then start playing the audio (play()). This ensures that whenever a new audio file is selected for playback, it will start playing from the beginning.
+  useEffect(() => {
+    if (!playbackUri) {
+      return;
+    }
+
+    player.seekTo(0);
+    player.play();
+  }, [playbackUri, player]);
+
   const startRecording = async () => {
     await audioRecorder.prepareToRecordAsync(); // Prepare the audio recorder to start recording
     await audioRecorder.record(); // Start recording audio
@@ -60,14 +75,25 @@ export default function Index() {
         );
 
         audioFile.move(audioRecordingsDir); // Move the file to a new directory for better organization
-        setAudioDrafts((prevDrafts) => [...prevDrafts, audioURI]); // Add the URI of the recorded audio to the in-memory drafts state for later submission
+        const storedUri = audioFile.uri;
+        setLatestRecordedUri(storedUri);
+
+        setAudioDrafts((prevDrafts) => [
+          ...prevDrafts,
+          {
+            id: audioFile.name,
+            label: `recording-${prevDrafts.length + 1}`, // Set a label for the audio draft, you can customize this as needed
+            localUri: storedUri,
+            timestamp: Date.now(),
+            status: "draft",
+            duration: recorderState.durationMillis ?? 0,
+          },
+        ]); // Add the URI of the recorded audio to the in-memory drafts state for later submission
         //list files in the audioRecordings directory for debugging purposes
       } catch (error) {
         console.error("Error handling audio file:", error);
       }
     }
-
-    setAudioURI(audioURI); // Update the state with the URI of the recorded audio
   };
 
   useEffect(() => {
@@ -85,30 +111,25 @@ export default function Index() {
         interruptionMode: "doNotMix", // Do not mix audio with other apps
       }); // Set the audio module to active so it can record and play audio
     };
-    const loadAudios = async () => {
-      const audioRecordingsDir = new Directory(Paths.cache, "audioRecordings");
-      const dirExists = audioRecordingsDir.exists;
-      if (!dirExists) {
-        await audioRecordingsDir.create(); // Create a directory for audio recordings if it doesn't exist
-      }
-      const files = await audioRecordingsDir.list(); // Read the contents of the audioRecordings directory
-      const audioFiles = files.filter((file) => file.name.endsWith(".m4a")); // Filter the files to only include audio files with the .m4a extension
-      setAudioDrafts(audioFiles.map((file) => file.uri)); // Update the in-memory drafts state with the URIs of the audio files in the audioRecordings directory
-    };
 
     // Request permissions when the component mounts
     requestPermissions();
-    loadAudios(); // Load existing audio files from the audioRecordings directory when the component mounts
   }, []);
   const handleAudioSubmission = async () => {
     if (recorderState.isRecording) {
       await stopRecording(); // Stop recording if it's currently recording
     }
+
+    if (!latestRecordedUri) {
+      Alert.alert("No audio available", "Record audio before uploading.");
+      return;
+    }
+
     // Create a FormData object to hold the audio file data for submission
     const formData = new FormData();
     // Append the recorded audio file to the form data with the appropriate fields
     formData.append("audio", {
-      uri: audioURI, // Set the URI of the recorded audio file
+      uri: latestRecordedUri, // Set the URI of the recorded audio file
       name: "recording.m4a", // Set a name for the audio file
       type: "audio/m4a", // Set the MIME type of the audio file
     } as any); // Append the recorded audio file to the form data
@@ -124,52 +145,62 @@ export default function Index() {
 
     alert(`Audio submitted successfully! Server response: ${response.status}`); // Alert the user that the audio was submitted successfully and show the server response status
   };
-  const handleReplayAudio = async () => {
-    if (audioURI) {
-      console.log(`Playing audio from URI: ${audioURI}`); // Log the audio URI for debugging purposes
-      player.seekTo(0);
-      player.play(); // Play the recorded audio
+  const handleAudioPlayback = (audio: AudioDraft) => {
+    if (currentAudioPlaying === audio.id) {
+      player.pause();
+      setCurrentAudioPlaying(null);
+      return;
+    }
+
+    if (audio) {
+      console.log(`Playing audio from URI: ${audio.localUri}`); // Log the audio URI for debugging purposes
+      setCurrentAudioPlaying(audio.id); // Set the currentAudioPlaying state to the ID of the audio draft that is being played
+      setPlaybackUri(audio.localUri);
     }
   };
 
   return (
     <View
       style={{
-        justifyContent: "space-between",
-        flex: 1,
         padding: 20,
         marginTop: 50,
+        borderColor: "black",
+        borderWidth: 1,
+        display: "flex",
+        justifyContent: "flex-start",
+        height: "95%",
       }}
     >
-      <Text>Sound DNA</Text>
-      {audioDrafts.length > 0 && (
-        <View style={{ marginBottom: 20 }}>
-          <Text style={{ fontWeight: "bold", marginBottom: 10 }}>
-            Audio Drafts:
-          </Text>
-          {audioDrafts.map((draftURI, index) => (
-            <Text key={index}>{draftURI}</Text> // Display the URIs of the audio drafts for debugging purposes
-          ))}
-        </View>
-      )}
-      <View style={{ borderWidth: 1, borderColor: "black" }}>
+      <Text style={{ fontSize: 18, fontWeight: "600" }}>Sound DNA</Text>
+
+      <View style={{ borderWidth: 1, borderColor: "black", marginTop: 50 }}>
         <View style={{ backgroundColor: "lightgray", padding: 10 }}>
-          <OffCanvas />
+          <OffCanvas
+            audioDrafts={audioDrafts}
+            setAudioDrafts={setAudioDrafts}
+            currentSound={currentAudioPlaying} // Pass the currentAudioPlaying state to the ListAudio component to determine which audio draft is currently playing
+            playAudio={(audio) => handleAudioPlayback(audio)}
+          />
         </View>
       </View>
       <View
         style={{
           flexDirection: "row",
           justifyContent: "space-around",
-          marginTop: 20,
+          marginTop: "auto",
         }}
       >
         <CustomButton
+          width="45%"
           title={recorderState.isRecording ? "Stop Recording" : "Record"}
           onPress={recorderState.isRecording ? stopRecording : startRecording}
         />
-        <CustomButton title="replay" onPress={handleReplayAudio} />
-        <CustomButton title="Submit Audio" onPress={handleAudioSubmission} />
+
+        <CustomButton
+          width="45%"
+          title="Upload"
+          onPress={handleAudioSubmission}
+        />
       </View>
     </View>
   );
