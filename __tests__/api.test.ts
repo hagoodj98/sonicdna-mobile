@@ -18,7 +18,7 @@ describe("API endpoint config", () => {
 
     const api = require("../config/api").default;
 
-    expect(api.SUBMIT_AUDIO).toBe("http://10.0.0.25:3000/api/submit-audio");
+    expect(api.UPLOAD_AUDIO).toBe("http://10.0.0.25:3000/api/submit-audio");
   });
 
   it("falls back to the local default base URL when env is missing", () => {
@@ -27,6 +27,6 @@ describe("API endpoint config", () => {
 
     const api = require("../config/api").default;
 
-    expect(api.SUBMIT_AUDIO).toBe("http://192.168.1.136:3000/api/submit-audio");
+    expect(api.UPLOAD_AUDIO).toBe("http://192.168.1.136:3000/api/submit-audio");
   });
 });

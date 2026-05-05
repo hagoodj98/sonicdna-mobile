@@ -4,9 +4,8 @@ import Card from "@/components/ui/Card";
 import IconCustomButton from "@/components/ui/IconButton";
 import { Text, View, Pressable } from "react-native";
 import React from "react";
-//import * as DocumentPicker from "expo-document-picker";
+import * as DocumentPicker from "expo-document-picker";
 export default function Dashboard() {
-  /*
   const [pickedAudioUri, setPickedAudioUri] = React.useState<string | null>(
     null,
   );
@@ -18,14 +17,22 @@ export default function Dashboard() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: "audio/*",
+        multiple: false,
+        copyToCacheDirectory: true,
       });
 
-    setPickedAudioName(result.assets?[0]?. || null);
+      if (result.canceled || !result.assets?.length) {
+        return;
+      }
+
+      const selectedAudio = result.assets[0];
+      setPickedAudioName(selectedAudio.name || null);
+      setPickedAudioUri(selectedAudio.uri || null);
     } catch (error) {
       console.error("Error picking audio file:", error);
     }
   };
-*/
+
   return (
     <View
       style={{ flex: 1, alignContent: "center", backgroundColor: "#0B0F1A" }}
@@ -55,7 +62,8 @@ export default function Dashboard() {
               }}
             >
               <Pressable
-                // onPress={handlePickAudio}
+                onPress={handlePickAudio}
+                testID="target-audio-picker"
                 style={{
                   marginTop: 14,
                   flex: 1,
@@ -79,11 +87,24 @@ export default function Dashboard() {
                     marginTop: 6,
                   }}
                 >
-                  {/*pickedAudioName ? "Audio Selected" : "Import Audio"*/}
+                  {pickedAudioName ? "Audio Selected" : "Import Audio"}
                 </Text>
 
-                {
-                  /*pickedAudioUri ? (*/
+                {pickedAudioName ? (
+                  <Text
+                    style={{
+                      color: "#8892A4",
+                      fontSize: 12,
+                      marginTop: 4,
+                      textAlign: "center",
+                    }}
+                    numberOfLines={2}
+                  >
+                    {pickedAudioName}
+                  </Text>
+                ) : null}
+
+                {pickedAudioUri ? (
                   <Text
                     style={{
                       color: "#4DD9FF",
@@ -95,8 +116,7 @@ export default function Dashboard() {
                   >
                     Ready to transform
                   </Text>
-                  /*  ) : null} */
-                }
+                ) : null}
               </Pressable>
             </View>
           </Card>
