@@ -1,0 +1,58 @@
+{
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "id": "expoLanHost",
+      "type": "promptString",
+      "description": "Metro LAN host (use the IP shown by Expo, e.g. 192.168.x.x)",
+      "default": "192.168.1.136"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Expo: Start and Debug (localhost)",
+      "configurations": [
+        "Expo: Start Metro (localhost)",
+        "Expo: Debug app (localhost)"
+      ]
+    },
+    {
+      "name": "Expo: Start and Debug (LAN)",
+      "configurations": ["Expo: Start Metro (LAN)", "Expo: Debug app (LAN)"]
+    }
+  ],
+  "configurations": [
+    {
+      "type": "node-terminal",
+      "request": "launch",
+      "name": "Expo: Start Metro (localhost)",
+      "command": "npm run start -- --localhost"
+    },
+    {
+      "type": "node-terminal",
+      "request": "launch",
+      "name": "Expo: Start Metro (LAN)",
+      "command": "npm run start -- --lan"
+    },
+    {
+      "type": "expo",
+      "request": "attach",
+      "name": "Expo: Debug app (localhost)",
+      "projectRoot": "${workspaceFolder}",
+      "bundlerPort": "8081",
+      "bundlerHost": "127.0.0.1",
+      "restart": true,
+      "enableTurboSourcemaps": true
+    },
+    {
+      "type": "expo",
+      "request": "attach",
+      "name": "Expo: Debug app (LAN)",
+      "projectRoot": "${workspaceFolder}",
+      "bundlerPort": "8081",
+      "bundlerHost": "${input:expoLanHost}",
+      "restart": true,
+      "enableTurboSourcemaps": true
+    }
+  ]
+}

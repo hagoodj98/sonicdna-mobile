@@ -49,7 +49,15 @@
           "enableBackgroundRecording": true
         }
       ],
-      "expo-asset"
+      [
+        "expo-file-system",
+        {
+          "supportsOpeningDocumentsInPlace": true,
+          "enableFileSharing": true
+        }
+      ],
+      "expo-asset",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
