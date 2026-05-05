@@ -1,5 +1,10 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react-native";
 import { Text } from "react-native";
 import Header from "@/components/Header";
 import Card from "@/components/ui/Card";
@@ -75,7 +80,9 @@ describe("New UI components", () => {
         },
       ],
       canceled: false,
-    } as unknown as Awaited<ReturnType<typeof DocumentPicker.getDocumentAsync>>);
+    } as unknown as Awaited<
+      ReturnType<typeof DocumentPicker.getDocumentAsync>
+    >);
 
     render(<Dashboard />);
 

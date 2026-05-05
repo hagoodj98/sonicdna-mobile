@@ -1,5 +1,10 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react-native";
 import * as ExpoAudio from "expo-audio";
 import Index from "../app/index";
 import { useAudios } from "@/hooks/useAudios";
@@ -181,7 +186,9 @@ describe("Index screen audio behavior", () => {
     await waitFor(() => {
       expect(mockPlayer.seekTo).toHaveBeenCalledWith(0);
       expect(mockPlayer.play).toHaveBeenCalledTimes(1);
-      expect(screen.getByTestId("current-sound").props.children).toBe("draft-1");
+      expect(screen.getByTestId("current-sound").props.children).toBe(
+        "draft-1",
+      );
     });
 
     fireEvent.press(screen.getByText("Play Draft"));
@@ -210,7 +217,9 @@ describe("Index screen audio behavior", () => {
 
     fireEvent.press(screen.getByText("Play Draft"));
     await waitFor(() => {
-      expect(screen.getByTestId("current-sound").props.children).toBe("draft-1");
+      expect(screen.getByTestId("current-sound").props.children).toBe(
+        "draft-1",
+      );
     });
 
     mockPlayerStatus.didJustFinish = true;
