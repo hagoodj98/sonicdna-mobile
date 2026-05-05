@@ -7,6 +7,8 @@ export const useAudios = () => {
   const [audioFiles, setAudioFiles] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [audioDrafts, setAudioDrafts] = useState<AudioDraft[]>([]); //in memory drafts of audio files that haven't been submitted yet
+  const [audioRecordingDraftsDir, setAudioRecordingDraftsDir] =
+    useState<Directory | null>(null);
   const getAudios = useCallback(async () => {
     setLoading(true);
     // Fetch audio elements from the API
@@ -33,11 +35,12 @@ export const useAudios = () => {
     const loadAudioDrafts = async () => {
       const audioRecordingsDir = new Directory(Paths.cache, "audioRecordings");
       const dirExists = audioRecordingsDir.exists;
+
       if (!dirExists) {
         await audioRecordingsDir.create(); // Create a directory for audio recordings if it doesn't exist
       }
-      const files = await audioRecordingsDir.list(); // Read the contents of the audioRecordings directory
 
+      const files = await audioRecordingsDir.list(); // Read the contents of the audioRecordings directory
       const audioFiles = files.filter((file) => file.name.endsWith(".m4a")); // Filter the files to only include audio files with the .m4a extension
       setAudioDrafts(
         audioFiles.map((file) => ({
@@ -50,6 +53,7 @@ export const useAudios = () => {
           isPlaying: false, // Initialize the isPlaying property to false
         })),
       ); // Update the in-memory drafts state with the URIs of the audio files in the audioRecordings directory
+      setAudioRecordingDraftsDir(audioRecordingsDir);
     };
     loadAudioDrafts();
   }, []);
@@ -65,6 +69,7 @@ export const useAudios = () => {
     addAudio,
     removeAudio,
     getAudios,
+    audioRecordingDraftsDir,
     loading,
     audioDrafts,
     setAudioDrafts,

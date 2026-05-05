@@ -1,4 +1,4 @@
-import React from "react";
+import React, { use, useEffect } from "react";
 import { View, Text } from "react-native";
 import IconButton from "./ui/IconButton";
 import { AudioDraft } from "@/types";
@@ -7,6 +7,7 @@ import { File } from "expo-file-system";
 type ListAudioProps = {
   playAudio: (audio: AudioDraft) => void;
   currentSound?: string | null;
+  audioStatus?: any; // Optional prop to pass the audio playback status directly
   audioDrafts?: AudioDraft[]; // Optional prop to pass audio drafts directly
   setAudioDrafts?: React.Dispatch<React.SetStateAction<AudioDraft[]>>; // Optional prop to pass the setAudioDrafts function directly
   uploadAudio: (audio: AudioDraft) => void; // Optional prop to pass the uploadAudio function directly
@@ -16,6 +17,7 @@ const ListAudio = ({
   playAudio,
   currentSound,
   uploadAudio,
+  audioStatus,
   audioDrafts: propAudioDrafts,
   setAudioDrafts: propSetAudioDrafts,
 }: ListAudioProps) => {

@@ -10,3 +10,8 @@ export type AudioDraft = {
   duration: number;
   isPlaying?: boolean;
 };
+export type AudioUploadFileType = Blob & {
+  uri: string;
+  name: string;
+  type: string;
+};
