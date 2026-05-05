@@ -4,7 +4,8 @@ import { IconButton } from "react-native-paper";
 type IconCustomButtonProps = {
   icon: string;
   size?: number;
-  onPress: () => void;
+  iconColor?: string;
+  onPress?: () => void;
 };
 
 const IconCustomButton = (props: IconCustomButtonProps) => (

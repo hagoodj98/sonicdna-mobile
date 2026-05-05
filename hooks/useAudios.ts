@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import API_ENDPOINTS from "../config/api";
 import { Directory, Paths } from "expo-file-system";
-import { AudioDraft, AudioElement } from "../types";
+import { AudioDraft, AudioElement, AudioUploadFileType } from "../types";
 
 export const useAudios = () => {
   const [audioFiles, setAudioFiles] = useState<string[]>([]);
@@ -30,7 +30,51 @@ export const useAudios = () => {
       prevAudioFiles.filter((a) => a !== audio),
     );
   }, []);
+  const removeAudioDraft = useCallback(
+    async (audioId: string) => {
+      const files = await audioRecordingDraftsDir?.list();
+      const audioFile = files?.find((file) => file.name === audioId);
+      if (audioFile) {
+        await audioFile.delete(); // Delete the audio file from the file system
+      }
+      setAudioDrafts(
+        (prevAudioDrafts) =>
+          prevAudioDrafts?.filter((draft) => draft.id !== audioId) || [],
+      );
+    },
+    [audioRecordingDraftsDir],
+  );
+  const uploadAudio = useCallback(
+    async (uriToUpload: string, titleAudioFile: string, audio: AudioDraft) => {
+      try {
+        const formData = new FormData();
+        formData.append("audio", {
+          uri: uriToUpload, // Set the URI of the recorded audio file
+          name: titleAudioFile, // Set a name for the audio file
+          type: "audio/m4a", // Set the MIME type of the audio file
+        } as AudioUploadFileType); // Append the recorded audio file to the form data
 
+        const response = await fetch(`${API_ENDPOINTS.UPLOAD_AUDIO}`, {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to upload audio: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log("Audio uploaded successfully:", result);
+        removeAudioDraft(audio.id); // Remove the audio draft from the in-memory state after successful upload
+      } catch (error) {
+        console.error("Error uploading audio:", error);
+      }
+    },
+    [removeAudioDraft],
+  );
   useEffect(() => {
     const loadAudioDrafts = async () => {
       const audioRecordingsDir = new Directory(Paths.cache, "audioRecordings");
@@ -69,6 +113,7 @@ export const useAudios = () => {
     addAudio,
     removeAudio,
     getAudios,
+    uploadAudio,
     audioRecordingDraftsDir,
     loading,
     audioDrafts,

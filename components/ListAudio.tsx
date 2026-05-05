@@ -1,4 +1,4 @@
-import React, { use, useEffect } from "react";
+import React from "react";
 import { View, Text } from "react-native";
 import IconButton from "./ui/IconButton";
 import { AudioDraft } from "@/types";
@@ -31,42 +31,56 @@ const ListAudio = ({
   };
 
   return (
-    <View>
+    <View style={{ gap: 12 }}>
       {drafts?.map((audio) => (
         <View
           style={{
             flexDirection: "row",
-            justifyContent: "space-between",
             alignItems: "center",
+            backgroundColor: "#161C2D",
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: "#252D42",
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            minHeight: 64,
           }}
           key={audio.id}
         >
-          <Text>{audio.label}</Text>
+          <Text
+            style={{
+              flex: 1,
+              color: "#FFFFFF",
+              fontSize: 15,
+              fontWeight: "500",
+            }}
+            numberOfLines={1}
+          >
+            {audio.label}
+          </Text>
           <IconButton
-            icon={currentSound === audio.id ? "pause" : "play"} // Change the icon based on the isPlaying state of the audio draft
-            size={20}
+            icon={currentSound === audio.id ? "pause" : "play"}
+            iconColor="#4DD9FF"
+            size={26}
             onPress={() => {
-              handlePlayAudio(audio); // Call the function to play the selected audio draft when the play/pause button is pressed
+              handlePlayAudio(audio);
             }}
           />
           <IconButton
             icon="upload"
-            size={20}
+            iconColor="#9B6BFF"
+            size={26}
             onPress={() => {
-              // Implement the logic to upload the audio draft to the server here
-              // You can use the localUri of the audio draft to access the file and upload it using your preferred method (e.g., fetch, axios, etc.)
-              handleUploadAudio(audio); // Call the function to upload the selected audio draft
+              handleUploadAudio(audio);
             }}
           />
           <IconButton
             icon="delete"
-            size={20}
+            iconColor="#E05252"
+            size={26}
             onPress={() => {
-              //remove audio draft from in-memory state and delete the file from the audioRecordings directory
-
               const fileToDelete = new File(audio.localUri);
-              fileToDelete.delete(); // Delete the audio file from the audioRecordings directory
-              // Update the in-memory drafts state to remove the deleted audio draft
+              fileToDelete.delete();
               setDrafts?.((prevDrafts) =>
                 prevDrafts.filter((draft) => draft.id !== audio.id),
               );

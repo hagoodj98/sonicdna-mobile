@@ -1,4 +1,11 @@
-import { Alert, View, Text } from "react-native";
+import {
+  Alert,
+  View,
+  Text,
+  ScrollView,
+  StatusBar,
+  Pressable,
+} from "react-native";
 import {
   useAudioRecorder,
   AudioModule,
@@ -8,16 +15,16 @@ import {
   useAudioPlayer,
   useAudioPlayerStatus,
 } from "expo-audio";
-import React, { use, useEffect, useState } from "react";
-import API_ENDPOINTS from "../config/api";
+import React, { useEffect, useState } from "react";
 import OffCanvas from "../components/ListAudio";
 import CustomButton from "../components/ui/CustomButton";
 import { File } from "expo-file-system";
 import { useAudios } from "@/hooks/useAudios";
-import { AudioDraft, AudioUploadFileType } from "@/types";
+import { AudioDraft } from "@/types";
 import ModalCustom from "@/components/ui/Modal";
 import Input from "@/components/ui/Input";
 import { IconButton } from "react-native-paper";
+import Header from "@/components/Header";
 
 export default function Index() {
   // Enable audio recording and playback
@@ -28,7 +35,8 @@ export default function Index() {
     null,
   ); // State to hold the URI of the recorded audio
   const [playbackUri, setPlaybackUri] = useState<string | null>(null);
-  const { audioDrafts, setAudioDrafts, audioRecordingDraftsDir } = useAudios(); // Use the custom hook to get audio data and loading state
+  const { audioDrafts, uploadAudio, setAudioDrafts, audioRecordingDraftsDir } =
+    useAudios(); // Use the custom hook to get audio data and loading state
   const [uriToUpload, setUriToUpload] = useState<string | null>(null); // State to hold the URI of the audio file that is being uploaded
   const [isUploadAudioFilePlaying, setIsUploadAudioFilePlaying] =
     useState(false); // State to track if the audio file that is being uploaded is currently playing
@@ -38,7 +46,7 @@ export default function Index() {
   const player = useAudioPlayer(playbackUri);
   const status = useAudioPlayerStatus(player);
   const [isModalOpen, setIsModalOpen] = useState(false); // State to control the visibility of the off-canvas component
-
+  const [isFormSubmitting, setIsFormSubmitting] = useState(false); // State to track if the form is currently being submitted to disable the upload button and prevent multiple submissions
   // Start playback whenever a new URI is selected.
   useEffect(() => {
     if (!playbackUri) {
@@ -114,7 +122,7 @@ export default function Index() {
     // Request permissions when the component mounts
     requestPermissions();
   }, []);
-  const handleAudioUpload = async (audio: AudioDraft) => {
+  const handleAudioUploadModal = async (audio: AudioDraft) => {
     if (recorderState.isRecording) {
       await stopRecording(); // Stop recording if it's currently recording
     }
@@ -143,34 +151,32 @@ export default function Index() {
       if (isUploadAudioFilePlaying) {
         player.pause();
         setIsUploadAudioFilePlaying(false);
+        setPlaybackUri(null);
         return;
       }
-
-      setPlaybackUri(uriToUpload); // Set the playback URI to the local URI of the audio draft that is being uploaded so it can be played back in the modal for confirmation before submission
-      setIsUploadAudioFilePlaying(true); // Set the state to indicate that the audio file being uploaded is currently playing
+      // Set the playback URI to the local URI of the audio draft that is being uploaded so it can be played back in the modal for confirmation before submission
+      setPlaybackUri(uriToUpload);
+      // Set the state to indicate that the audio file being uploaded is currently playing so that the play button in the modal can be updated to a pause button while it is playing and allow the user to pause it if they want to while previewing the audio before submission
+      setIsUploadAudioFilePlaying(true);
     }
   };
   const handleAudioSubmission = async () => {
-    // Implement the logic to upload the audio draft to the server here
-    // You can use the localUri of the audio draft to access the file and upload it using your preferred method (e.g., fetch, axios, etc.)
-    const formData = new FormData();
-    // Append the recorded audio file to the form data with the appropriate fields
-    formData.append("audio", {
-      uri: uriToUpload, // Set the URI of the recorded audio file
-      name: titleAudioFile, // Set a name for the audio file
-      type: "audio/m4a", // Set the MIME type of the audio file
-    } as AudioUploadFileType); // Append the recorded audio file to the form data
-
-    // Here you can implement the logic to submit the audio file to your backend or process it as needed
-    const response = await fetch(API_ENDPOINTS.SUBMIT_AUDIO, {
-      method: "POST",
-      headers: {
-        "Content-Type": "multipart/form-data", // Set the content type to multipart/form-data for file upload because we are sending a file in the request body
-      },
-      body: formData, // Send the form data containing the audio file in the request body
-    });
-
-    alert(`Audio submitted successfully! Server response: ${response.status}`); // Alert the user that the audio was submitted successfully and show the server response status
+    setIsFormSubmitting(true); // Set the form submitting state to true to disable the upload button and prevent multiple submissions while the audio file is being uploaded
+    if (uriToUpload && titleAudioFile) {
+      const audioDraft = audioDrafts.find(
+        (draft) => draft.localUri === uriToUpload,
+      );
+      if (audioDraft) {
+        await uploadAudio(uriToUpload, titleAudioFile, audioDraft);
+      }
+    } else {
+      Alert.alert(
+        "Missing information",
+        "Please provide both the audio file and a name before uploading.",
+      ); // Alert the user if either the audio URI or the title is missing
+      setIsFormSubmitting(false); // Set the form submitting state back to false after the upload is complete to re-enable the upload button for future submissions
+      setIsModalOpen(false); // Close the modal after submission
+    }
   };
   useEffect(() => {
     if (!isModalOpen) {
@@ -181,92 +187,200 @@ export default function Index() {
   }, [isModalOpen]);
 
   return (
-    <View>
-      <View
-        style={{
-          padding: 20,
-          marginTop: 50,
-          borderColor: "black",
-          borderWidth: 1,
-          display: "flex",
-          justifyContent: "flex-start",
-          height: "95%",
-        }}
-      >
-        <Text style={{ fontSize: 18, fontWeight: "600" }}>Sound DNA</Text>
+    <View style={{ flex: 1, backgroundColor: "#0B0F1A" }}>
+      <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
 
-        <View style={{ borderWidth: 1, borderColor: "black", marginTop: 50 }}>
-          <View style={{ backgroundColor: "lightgray", padding: 10 }}>
-            <OffCanvas
-              audioDrafts={audioDrafts}
-              setAudioDrafts={setAudioDrafts}
-              currentSound={currentAudioPlaying} // Pass the currentAudioPlaying state to the ListAudio component to determine which audio draft is currently playing
-              uploadAudio={(audio) => {
-                handleAudioUpload(audio);
-              }} // Pass the handleAudioSubmission function to the ListAudio component to allow uploading of audio drafts when the upload button is pressed
-              playAudio={(audio) => handleAudioPlayback(audio)}
-            />
-          </View>
-        </View>
+      <Header title="Sound DNA API" />
+
+      {/* Recording list */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <OffCanvas
+          audioDrafts={audioDrafts}
+          setAudioDrafts={setAudioDrafts}
+          currentSound={currentAudioPlaying}
+          uploadAudio={(audio) => {
+            handleAudioUploadModal(audio);
+          }}
+          playAudio={(audio) => handleAudioPlayback(audio)}
+        />
+      </ScrollView>
+
+      {/* Bottom action bar */}
+      {!isModalOpen && (
         <View
           style={{
-            flexDirection: "row",
-            justifyContent: "space-around",
-            marginTop: "auto",
+            alignItems: "center",
+            paddingBottom: 36,
+            paddingTop: 20,
+            borderTopWidth: 1,
+            borderTopColor: "#1E2739",
+            gap: 8,
           }}
         >
-          {!isModalOpen && (
-            <CustomButton
-              width="45%"
-              title={recorderState.isRecording ? "Stop Recording" : "Record"}
-              onPress={
-                recorderState.isRecording ? stopRecording : startRecording
-              }
+          <Pressable
+            onPress={recorderState.isRecording ? stopRecording : startRecording}
+            style={({ pressed }) => ({
+              width: 80,
+              height: 80,
+              borderRadius: 40,
+              backgroundColor: recorderState.isRecording
+                ? "#7A1F1F"
+                : "#3D2D8A",
+              borderWidth: 3,
+              borderColor: recorderState.isRecording ? "#E05252" : "#9B6BFF",
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: pressed ? 0.75 : 1,
+              shadowColor: recorderState.isRecording ? "#E05252" : "#9B6BFF",
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.5,
+              shadowRadius: 12,
+              elevation: 8,
+            })}
+          >
+            <View
+              style={{
+                width: recorderState.isRecording ? 28 : 20,
+                height: recorderState.isRecording ? 28 : 20,
+                borderRadius: recorderState.isRecording ? 4 : 10,
+                backgroundColor: recorderState.isRecording
+                  ? "#E05252"
+                  : "#FFFFFF",
+              }}
             />
-          )}
+          </Pressable>
+          <Text
+            style={{
+              color: recorderState.isRecording ? "#E05252" : "#8892A4",
+              fontSize: 12,
+              fontWeight: "600",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+            }}
+          >
+            {recorderState.isRecording ? "Stop" : "Record"}
+          </Text>
         </View>
-      </View>
+      )}
+
       {isModalOpen && (
         <ModalCustom
           visible={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => {
+            setIsModalOpen(false);
+            setPlaybackUri(null);
+          }}
         >
-          <Input
-            value={titleAudioFile}
-            onChangeText={setTitleAudioFile}
-            style={{ marginBottom: 20 }}
-          />
+          {/* Modal heading */}
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "700",
+              color: "#FFFFFF",
+              marginBottom: 4,
+              alignSelf: "flex-start",
+            }}
+          >
+            Save Recording
+          </Text>
+          <Text
+            style={{
+              fontSize: 13,
+              color: "#8892A4",
+              marginBottom: 20,
+              alignSelf: "flex-start",
+            }}
+          >
+            Give your recording a name before uploading.
+          </Text>
+
+          {/* Audio preview row */}
           {uriToUpload && (
-            <>
-              <Text style={{ marginBottom: 20 }}>
-                Ready to upload: {uriToUpload.split("/").pop()}
-              </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: "#0B0F1A",
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: "#252D42",
+                paddingVertical: 8,
+                paddingHorizontal: 14,
+                marginBottom: 20,
+                width: "100%",
+                gap: 10,
+              }}
+            >
               <IconButton
-                icon={isUploadAudioFilePlaying ? "pause" : "play"} // Change the icon based on the isPlaying state of the audio draft
-                size={20}
+                icon={isUploadAudioFilePlaying ? "pause-circle" : "play-circle"}
+                iconColor="#4DD9FF"
+                size={32}
                 onPress={() => {
-                  handleAudioPlayback(undefined, uriToUpload); // Call the function to play the selected audio draft when the play button is pressed in the modal for confirmation before submission
+                  handleAudioPlayback(undefined, uriToUpload);
                 }}
               />
-            </>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "500" }}
+                  numberOfLines={1}
+                >
+                  {uriToUpload.split("/").pop()}
+                </Text>
+                <Text style={{ color: "#8892A4", fontSize: 12, marginTop: 2 }}>
+                  {isUploadAudioFilePlaying ? "Playing…" : "Tap to preview"}
+                </Text>
+              </View>
+            </View>
           )}
+
+          {/* Name input */}
+          <Text
+            style={{
+              color: "#8892A4",
+              fontSize: 12,
+              alignSelf: "flex-start",
+              marginBottom: 4,
+              letterSpacing: 0.5,
+              textTransform: "uppercase",
+            }}
+          >
+            Recording name
+          </Text>
+          <Input
+            value={titleAudioFile}
+            readOnly={isFormSubmitting}
+            onChangeText={setTitleAudioFile}
+            style={{ marginBottom: 20, width: "100%" }}
+          />
+
+          {/* Action buttons */}
           <View
             style={{
               flexDirection: "row",
-              justifyContent: "space-around",
+              gap: 10,
               width: "100%",
+              marginTop: 8,
             }}
           >
             <CustomButton
-              title="Upload"
-              width="45%"
+              title={isFormSubmitting ? "Uploading…" : "Upload"}
+              width="48%"
               onPress={handleAudioSubmission}
+              disabled={isFormSubmitting}
             />
             <CustomButton
               title="Cancel"
-              onPress={() => setIsModalOpen(false)}
-              width="45%"
+              onPress={() => {
+                setIsModalOpen(false);
+                setPlaybackUri(null);
+              }}
+              width="48%"
               variant="secondary"
+              disabled={isFormSubmitting}
             />
           </View>
         </ModalCustom>
