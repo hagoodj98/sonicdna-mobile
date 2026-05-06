@@ -1,3 +1,5 @@
+import { useAudioPlayer } from "expo-audio";
+
 export type AudioElement = {
   audioFiles: string[];
 };
@@ -14,4 +16,17 @@ export type AudioUploadFileType = Blob & {
   uri: string;
   name: string;
   type: string;
+};
+
+export type AudioPlayerContextType = {
+  currentSound: string | null;
+  setCurrentSound: (soundId: string | null) => void;
+  player: ReturnType<typeof useAudioPlayer>;
+  setPlaybackUri: (uri: string | null) => void;
+};
+export type SoundProfileMeta = {
+  audioFileId: string;
+  tempoBpm: number;
+  estimatedPitchHz: number;
+  energy: number;
 };

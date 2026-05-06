@@ -6,102 +6,53 @@ import {
   StatusBar,
   Pressable,
 } from "react-native";
-import {
-  useAudioRecorder,
-  AudioModule,
-  RecordingPresets,
-  useAudioRecorderState,
-  setAudioModeAsync,
-  useAudioPlayer,
-  useAudioPlayerStatus,
-} from "expo-audio";
+import { AudioModule, setAudioModeAsync } from "expo-audio";
 import React, { useEffect, useState } from "react";
 import OffCanvas from "../components/ListAudio";
 import CustomButton from "../components/ui/CustomButton";
-import { File } from "expo-file-system";
 import { useAudios } from "@/hooks/useAudios";
 import { AudioDraft } from "@/types";
 import ModalCustom from "@/components/ui/Modal";
 import Input from "@/components/ui/Input";
 import { IconButton } from "react-native-paper";
 import Header from "@/components/Header";
+import { useAudioPlayerControl } from "@/hooks/useAudioPlayer";
+import { useAudioRecorderHook } from "@/hooks/useAudioRecorder";
 
 export default function Index() {
   // Enable audio recording and playback
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  // Set the audio module to active so it can record and play audio
-  const recorderState = useAudioRecorderState(audioRecorder);
-  const [currentAudioPlaying, setCurrentAudioPlaying] = useState<string | null>(
-    null,
-  ); // State to hold the URI of the recorded audio
-  const [playbackUri, setPlaybackUri] = useState<string | null>(null);
-  const { audioDrafts, uploadAudio, setAudioDrafts, audioRecordingDraftsDir } =
-    useAudios(); // Use the custom hook to get audio data and loading state
-  const [uriToUpload, setUriToUpload] = useState<string | null>(null); // State to hold the URI of the audio file that is being uploaded
-  const [isUploadAudioFilePlaying, setIsUploadAudioFilePlaying] =
-    useState(false); // State to track if the audio file that is being uploaded is currently playing
-  const [titleAudioFile, setTitleAudioFile] = useState(""); // State to hold the input value
-  // create audio player for all recorded audio files using the useAudioPlayer hook from expo-audio and set the URI of the audio player to the recorded audio file
+  const { recorderState, stopRecording, startRecording } =
+    useAudioRecorderHook();
+  // State to hold the URI of the recorded audio
+  const [currentToPlayAudioDraft, setCurrentToPlayAudioDraft] = useState<
+    string | null
+  >(null);
+  // Use the custom hook to get audio data and loading state
+  const { uploadAudio, setAudioDrafts, audioDrafts } = useAudios();
 
-  const player = useAudioPlayer(playbackUri);
-  const status = useAudioPlayerStatus(player);
-  const [isModalOpen, setIsModalOpen] = useState(false); // State to control the visibility of the off-canvas component
-  const [isFormSubmitting, setIsFormSubmitting] = useState(false); // State to track if the form is currently being submitted to disable the upload button and prevent multiple submissions
+  // State to hold the URI of the audio file that is being uploaded
+  const [uriToUpload, setUriToUpload] = useState<string | null>(null);
+  // State to track if the audio file that is being uploaded is currently playing
+  const [isUploadAudioFilePlaying, setIsUploadAudioFilePlaying] =
+    useState(false);
+  // State to hold the input value
+  // create audio player for all recorded audio files using the useAudioPlayer hook from expo-audio and set the URI of the audio player to the recorded audio file
+  const [titleAudioFile, setTitleAudioFile] = useState("");
+  const { player, setPlaybackUri, status } = useAudioPlayerControl(null);
+  // State to control the visibility of the off-canvas component for listing audio drafts and the modal for confirming audio uploads and providing a name for the audio file before submission
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  // State to track if the form is currently being submitted to disable the upload button and prevent multiple submissions
   // Start playback whenever a new URI is selected.
-  useEffect(() => {
-    if (!playbackUri) {
-      return;
-    }
-    player.seekTo(0);
-    player.play();
-  }, [playbackUri, player]);
+  const [isFormSubmitting, setIsFormSubmitting] = useState(false);
 
   useEffect(() => {
     // Reset the currentAudioPlaying state to null when playback finishes to update the UI and allow the user to play the audio draft again if they want to after it finishes playing
     if (status.didJustFinish) {
-      setCurrentAudioPlaying(null); // Reset the currentAudioPlaying state to null when playback finishes
+      setCurrentToPlayAudioDraft(null); // Reset the currentAudioPlaying state to null when playback finishes
       setIsUploadAudioFilePlaying(false); // Reset the state to indicate that the audio file being uploaded is not playing when playback finishes
       setPlaybackUri(null); // Reset the playback URI to null when playback finishes to stop the audio player and reset it for the next time an audio draft is played or an audio file is uploaded and played in the modal for confirmation before submission
     }
-  }, [status.didJustFinish]);
-
-  const startRecording = async () => {
-    await audioRecorder.prepareToRecordAsync(); // Prepare the audio recorder to start recording
-    await audioRecorder.record(); // Start recording audio
-  };
-  const stopRecording = async () => {
-    await audioRecorder.stop(); // Stop recording audio
-    const audioURI = audioRecorder.uri; // Get the URI of the recorded audio file
-    //send audio file via expo-file-system
-
-    if (audioURI) {
-      try {
-        const audioFile = new File(audioURI); // Create a File object from the recorded audio URI
-
-        const renameAudioFile = `recording-${Date.now()}.m4a`; // Generate a unique name using a timestamp to avoid collisions with existing files
-        audioFile.rename(renameAudioFile); // Rename the recorded audio file before moving it
-
-        if (audioRecordingDraftsDir) {
-          // Move the recorded audio file to the audioRecordings directory for better organization and to ensure it is stored in a consistent location for later retrieval and submission
-          audioFile.move(audioRecordingDraftsDir);
-        }
-        setAudioDrafts((prevDrafts) => [
-          ...prevDrafts,
-          {
-            id: audioFile.name,
-            label: audioFile.name, // Set a label for the audio draft, you can customize this as needed
-            localUri: audioFile.uri,
-            timestamp: Date.now(),
-            status: "draft",
-            duration: recorderState.durationMillis ?? 0,
-          },
-        ]); // Add the URI of the recorded audio to the in-memory drafts state for later submission
-        //list files in the audioRecordings directory for debugging purposes
-      } catch (error) {
-        console.error("Error handling audio file:", error);
-      }
-    }
-  };
+  }, [setPlaybackUri, status.didJustFinish]);
 
   useEffect(() => {
     const requestPermissions = async () => {
@@ -134,9 +85,9 @@ export default function Index() {
     setUriToUpload(audio.localUri); // Set the URI of the audio file that is being uploaded to the local URI of the selected audio draft so it can be used for submission when the user confirms the upload in the modal
   };
   const handleAudioPlayback = (audio?: AudioDraft, uriToUpload?: string) => {
-    if (currentAudioPlaying === audio?.id) {
+    if (currentToPlayAudioDraft === audio?.id) {
       player.pause();
-      setCurrentAudioPlaying(null);
+      setCurrentToPlayAudioDraft(null);
       //
       setPlaybackUri(null);
       return;
@@ -144,7 +95,7 @@ export default function Index() {
 
     if (audio) {
       console.log(`Playing audio from URI: ${audio.localUri}`); // Log the audio URI for debugging purposes
-      setCurrentAudioPlaying(audio.id); // Set the currentAudioPlaying state to the ID of the audio draft that is being played
+      setCurrentToPlayAudioDraft(audio.id); // Set the currentToPlayAudioDraft state to the ID of the audio draft that is being played
       setPlaybackUri(audio.localUri);
     }
     if (uriToUpload) {
@@ -178,6 +129,26 @@ export default function Index() {
       setIsModalOpen(false); // Close the modal after submission
     }
   };
+
+  const handleStoppedRecording = async () => {
+    const audioFile = await stopRecording();
+    if (!audioFile) {
+      return;
+    }
+    setAudioDrafts((prevDrafts) => [
+      ...prevDrafts,
+      {
+        id: audioFile.name,
+        label: audioFile.name, // Set a label for the audio draft, you can customize this as needed
+        localUri: audioFile.uri,
+        timestamp: Date.now(),
+        status: "draft",
+        duration: recorderState.durationMillis ?? 0,
+      },
+    ]);
+    // Stop recording if it's currently recording
+  };
+
   useEffect(() => {
     if (!isModalOpen) {
       setIsUploadAudioFilePlaying(false); // Reset the state to indicate that the audio file being uploaded is not playing when the modal is closed
@@ -189,7 +160,6 @@ export default function Index() {
   return (
     <View style={{ flex: 1, backgroundColor: "#0B0F1A" }}>
       <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
-
       <Header title="Sound DNA API" />
 
       {/* Recording list */}
@@ -199,9 +169,9 @@ export default function Index() {
         showsVerticalScrollIndicator={false}
       >
         <OffCanvas
-          audioDrafts={audioDrafts}
           setAudioDrafts={setAudioDrafts}
-          currentSound={currentAudioPlaying}
+          currentSound={currentToPlayAudioDraft}
+          audioDrafts={audioDrafts} // Use the in-memory audioDrafts state from the context
           uploadAudio={(audio) => {
             handleAudioUploadModal(audio);
           }}
@@ -222,7 +192,11 @@ export default function Index() {
           }}
         >
           <Pressable
-            onPress={recorderState.isRecording ? stopRecording : startRecording}
+            onPress={
+              recorderState.isRecording
+                ? handleStoppedRecording
+                : startRecording
+            }
             style={({ pressed }) => ({
               width: 80,
               height: 80,

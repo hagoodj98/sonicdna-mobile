@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import API_ENDPOINTS from "../config/api";
 import { Directory, Paths } from "expo-file-system";
-import { AudioDraft, AudioElement, AudioUploadFileType } from "../types";
+import {
+  AudioDraft,
+  AudioElement,
+  AudioUploadFileType,
+  SoundProfileMeta,
+} from "../types";
 
 export const useAudios = () => {
-  const [audioFiles, setAudioFiles] = useState<string[]>([]);
+  const [audioMetas, setAudioMetas] = useState<SoundProfileMeta[]>([]);
   const [loading, setLoading] = useState(false);
   const [audioDrafts, setAudioDrafts] = useState<AudioDraft[]>([]); //in memory drafts of audio files that haven't been submitted yet
   const [audioRecordingDraftsDir, setAudioRecordingDraftsDir] =
@@ -14,20 +19,21 @@ export const useAudios = () => {
     // Fetch audio elements from the API
     const response = await fetch(`${API_ENDPOINTS.GET_AUDIO}`);
 
-    const audioElements: AudioElement = await response.json();
+    const audioElements: { audioFiles: SoundProfileMeta[] } =
+      await response.json();
     console.log(audioElements.audioFiles);
 
-    setAudioFiles(audioElements.audioFiles);
+    setAudioMetas(audioElements.audioFiles);
     setLoading(false);
   }, []);
 
-  const addAudio = useCallback((audio: string) => {
-    setAudioFiles((prevAudioFiles) => [...prevAudioFiles, audio]);
+  const addAudio = useCallback((audio: SoundProfileMeta) => {
+    setAudioMetas((prevAudioMetas) => [...prevAudioMetas, audio]);
   }, []);
 
-  const removeAudio = useCallback((audio: string) => {
-    setAudioFiles((prevAudioFiles) =>
-      prevAudioFiles.filter((a) => a !== audio),
+  const removeAudio = useCallback((audio: SoundProfileMeta) => {
+    setAudioMetas((prevAudioMetas) =>
+      prevAudioMetas.filter((a) => a !== audio),
     );
   }, []);
   const removeAudioDraft = useCallback(
@@ -109,7 +115,7 @@ export const useAudios = () => {
   }, [getAudios]);
 
   return {
-    audioFiles,
+    audioMetas,
     addAudio,
     removeAudio,
     getAudios,
