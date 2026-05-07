@@ -24,9 +24,14 @@ export type AudioPlayerContextType = {
   player: ReturnType<typeof useAudioPlayer>;
   setPlaybackUri: (uri: string | null) => void;
 };
-export type SoundProfileMeta = {
+export type SoundProfile = {
   audioFileId: string;
   tempoBpm: number;
   estimatedPitchHz: number;
-  energy: number;
+  energy?: number;
+  audioName: string;
+  energyLevel?: string;
+  tempoLabel?: string;
+  tone?: string;
+  mood?: string;
 };

@@ -1,15 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import API_ENDPOINTS from "../config/api";
-import { Directory, Paths } from "expo-file-system";
-import {
-  AudioDraft,
-  AudioElement,
-  AudioUploadFileType,
-  SoundProfileMeta,
-} from "../types";
+import { Directory, File, Paths } from "expo-file-system";
+import { AudioDraft, AudioUploadFileType, SoundProfile } from "../types";
 
 export const useAudios = () => {
-  const [audioMetas, setAudioMetas] = useState<SoundProfileMeta[]>([]);
+  const [audioMetas, setAudioMetas] = useState<SoundProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [audioDrafts, setAudioDrafts] = useState<AudioDraft[]>([]); //in memory drafts of audio files that haven't been submitted yet
   const [audioRecordingDraftsDir, setAudioRecordingDraftsDir] =
@@ -17,21 +12,20 @@ export const useAudios = () => {
   const getAudios = useCallback(async () => {
     setLoading(true);
     // Fetch audio elements from the API
-    const response = await fetch(`${API_ENDPOINTS.GET_AUDIO}`);
+    const response = await fetch(`${API_ENDPOINTS.GET_AUDIO_METADATA}`);
 
-    const audioElements: { audioFiles: SoundProfileMeta[] } =
-      await response.json();
+    const audioElements: { audioFiles: SoundProfile[] } = await response.json();
     console.log(audioElements.audioFiles);
 
     setAudioMetas(audioElements.audioFiles);
     setLoading(false);
   }, []);
 
-  const addAudio = useCallback((audio: SoundProfileMeta) => {
+  const addAudio = useCallback((audio: SoundProfile) => {
     setAudioMetas((prevAudioMetas) => [...prevAudioMetas, audio]);
   }, []);
 
-  const removeAudio = useCallback((audio: SoundProfileMeta) => {
+  const removeAudio = useCallback((audio: SoundProfile) => {
     setAudioMetas((prevAudioMetas) =>
       prevAudioMetas.filter((a) => a !== audio),
     );
@@ -81,6 +75,39 @@ export const useAudios = () => {
     },
     [removeAudioDraft],
   );
+  const downloadAudio = useCallback(async (audioFileId: string) => {
+    try {
+      if (!audioFileId) {
+        return null;
+      }
+
+      const downloadsDir = new Directory(Paths.cache, "downloads");
+      if (!downloadsDir.exists) {
+        downloadsDir.create({ intermediates: true, idempotent: true });
+      }
+
+      // Keep the downloads cache lightweight by removing previous files before each new download.
+      const cachedFiles = downloadsDir.list();
+      for (const cachedFile of cachedFiles) {
+        cachedFile.delete();
+      }
+
+      const sourceUrl = `${API_ENDPOINTS.DOWNLOAD_AUDIO}/${audioFileId}`;
+      const fileName = `${audioFileId}.m4a`;
+      const destinationFile = new File(downloadsDir, fileName);
+
+      const downloadedFile = await File.downloadFileAsync(
+        sourceUrl,
+        destinationFile,
+        { idempotent: true },
+      );
+
+      return downloadedFile.uri; // Return the local file URI of the downloaded audio file
+    } catch (error) {
+      console.error("Error downloading audio:", error);
+      return null;
+    }
+  }, []);
   useEffect(() => {
     const loadAudioDrafts = async () => {
       const audioRecordingsDir = new Directory(Paths.cache, "audioRecordings");
@@ -92,6 +119,7 @@ export const useAudios = () => {
 
       const files = await audioRecordingsDir.list(); // Read the contents of the audioRecordings directory
       const audioFiles = files.filter((file) => file.name.endsWith(".m4a")); // Filter the files to only include audio files with the .m4a extension
+
       setAudioDrafts(
         audioFiles.map((file) => ({
           id: file.name,
@@ -120,6 +148,8 @@ export const useAudios = () => {
     removeAudio,
     getAudios,
     uploadAudio,
+    setAudioMetas,
+    downloadAudio,
     audioRecordingDraftsDir,
     loading,
     audioDrafts,

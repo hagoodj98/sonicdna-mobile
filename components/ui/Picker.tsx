@@ -1,16 +1,15 @@
 import React, { useState } from "react";
 import { Picker } from "@react-native-picker/picker";
 import { StyleSheet } from "react-native";
-import { useAudios } from "@/hooks/useAudios";
+import { SoundProfile } from "@/types";
 
 type PickerProps = {
   getValue: (value: string | null) => void;
+  audioMetas: SoundProfile[];
 };
 
-const CustomPicker = ({ getValue }: PickerProps) => {
-  const { audioMetas } = useAudios();
+const CustomPicker = ({ getValue, audioMetas }: PickerProps) => {
   const [selectedAudio, setSelectedAudio] = useState<string | null>(null);
-
   return (
     <Picker
       selectedValue={selectedAudio}
@@ -25,7 +24,7 @@ const CustomPicker = ({ getValue }: PickerProps) => {
       {audioMetas.map((audio, index) => (
         <Picker.Item
           key={index}
-          label={audio.audioFileId}
+          label={audio.audioName}
           value={audio.audioFileId}
         />
       ))}

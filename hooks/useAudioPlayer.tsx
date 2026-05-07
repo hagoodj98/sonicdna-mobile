@@ -11,11 +11,16 @@ export const useAudioPlayerControl = (initialPlaybackUri: string | null) => {
 
   useEffect(() => {
     if (!playbackUri) {
+      player.pause();
       return;
     }
 
-    player.seekTo(0);
-    player.play();
+    try {
+      player.seekTo(0);
+      player.play();
+    } catch (error) {
+      console.error("Failed to play audio:", error);
+    }
   }, [playbackUri, player]);
 
   return {

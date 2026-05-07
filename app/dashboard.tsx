@@ -8,20 +8,23 @@ import CustomButton from "@/components/ui/CustomButton";
 import { useAudioPlayerControl } from "@/hooks/useAudioPlayer";
 import Picker from "@/components/ui/Picker";
 import { useAudios } from "@/hooks/useAudios";
-import { SoundProfileMeta } from "@/types";
+import { SoundProfile } from "@/types";
 
 export default function Dashboard() {
   const [pickedAudioUri, setPickedAudioUri] = useState<string | null>(null);
   const [pickedAudioName, setPickedAudioName] = useState<string | null>(null);
+  const [downloadedAudioUri, setDownloadedAudioUri] = useState<string | null>(
+    null,
+  );
   const [isImportedPlaying, setIsImportedPlaying] = useState(false);
-  const { audioMetas } = useAudios();
-  const [audioMetaData, setAudioMetaData] = useState<SoundProfileMeta>({
-    audioFileId: "",
-    tempoBpm: 0,
-    estimatedPitchHz: 0,
-    energy: 0,
-  });
+  const [isImportSelected, setIsImportSelected] = useState(false);
+  const { audioMetas, downloadAudio } = useAudios();
+  const [audioSelected, setAudioSelected] = useState<SoundProfile | null>(null);
+  const [isDNASoundPlaying, setIsDNASoundPlaying] = useState(false);
   const { setPlaybackUri, player, status } = useAudioPlayerControl(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [audioSelectedDownloaded, setAudioSelectedDownloaded] = useState(false);
+
   const handlePickAudio = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -35,6 +38,7 @@ export default function Dashboard() {
       }
       // Get the selected audio file's URI and name
       const selectedAudio = result.assets[0];
+      setIsImportSelected(true);
       setPickedAudioName(selectedAudio.name || null);
       setPickedAudioUri(selectedAudio.uri || null);
     } catch (error) {
@@ -49,25 +53,40 @@ export default function Dashboard() {
   const handleAudioMetaData = (value: string | null) => {
     const selectedMeta = audioMetas.find((meta) => meta.audioFileId === value);
     if (selectedMeta) {
-      setAudioMetaData({
-        audioFileId: selectedMeta.audioFileId,
-        tempoBpm: selectedMeta.tempoBpm,
-        estimatedPitchHz: selectedMeta.estimatedPitchHz,
-        energy: selectedMeta.energy,
-      });
+      console.log("old selected", selectedMeta);
+
+      setAudioSelected(selectedMeta);
     } else {
-      setAudioMetaData({
-        audioFileId: "",
-        tempoBpm: 0,
-        estimatedPitchHz: 0,
-        energy: 0,
-      });
+      setAudioSelected(null);
+      setAudioSelectedDownloaded(false);
     }
   };
   useEffect(() => {
+    if (audioSelected) {
+      setAudioSelectedDownloaded(false); // Reset the downloaded state when a new audio is selected
+      setDownloadedAudioUri(null);
+    }
+  }, [audioSelected]);
+  const handleDownloadAudio = () => {
+    setIsLoading(true);
+    downloadAudio(audioSelected?.audioFileId || "").then((uri) => {
+      if (uri) {
+        setDownloadedAudioUri(uri); // Set the downloaded audio URI to the state
+        setAudioSelectedDownloaded(true); // Set the downloaded audio state to true to update the UI accordingly
+      } else {
+        Alert.alert("Failed to download audio");
+      }
+      setIsLoading(false);
+    });
+  };
+
+  useEffect(() => {
     if (status.didJustFinish) {
       // Set the imported audio playing state to false to update the UI accordingly when the audio finishes playing
+
       setIsImportedPlaying(false);
+      setIsDNASoundPlaying(false);
+
       // Reset the playback URI to null to stop the audio player and reset its state
       setPlaybackUri(null);
     }
@@ -79,7 +98,7 @@ export default function Dashboard() {
     >
       <Header title="Sound DNA API" />
       <View style={{ marginTop: 20, justifyContent: "center" }}>
-        <Picker getValue={handleAudioMetaData} />
+        <Picker audioMetas={audioMetas} getValue={handleAudioMetaData} />
       </View>
       <View style={{ flex: 1, margin: 10, justifyContent: "center" }}>
         <View
@@ -90,32 +109,79 @@ export default function Dashboard() {
           }}
         >
           <Card>
-            <Text style={{ margin: 10, color: "#FFFFFF" }}>Source DNA</Text>
             <View
               style={{
-                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                flex: 1,
+              }}
+            >
+              <Text style={{ margin: 10, color: "#FFFFFF" }}>Source DNA</Text>
+            </View>
+            {audioSelectedDownloaded ? (
+              <View
+                style={{
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <IconCustomButton
+                  icon={isDNASoundPlaying ? "pause" : "play"}
+                  iconColor="#4DD9FF"
+                  size={26}
+                  onPress={() => {
+                    if (downloadedAudioUri) {
+                      if (isDNASoundPlaying) {
+                        player.pause();
+                        setPlaybackUri(null); // Stop playback by setting the playback URI to null
+                        setIsDNASoundPlaying(false); // Set the DNA audio playing state to false to update the UI accordingly
+                        return;
+                      }
+
+                      setPlaybackUri(downloadedAudioUri); // Set the playback URI to the downloaded audio file's URI to play it in the audio player
+                      setIsDNASoundPlaying(true); // Set the DNA audio playing state to true to update the UI accordingly
+                    }
+                  }}
+                />
+              </View>
+            ) : audioSelected ? (
+              <IconCustomButton
+                icon={isLoading ? "loading" : "download"}
+                iconColor="#9B6BFF"
+                size={26}
+                onPress={handleDownloadAudio}
+              />
+            ) : null}
+
+            <View
+              style={{
                 gap: 10,
-                marginTop: 20,
+                justifyContent: "flex-end",
+                paddingBottom: 10,
+                flex: 1,
                 paddingHorizontal: 10,
               }}
             >
               <Text style={{ color: "#FFFFFF" }}>
-                Audio Name: {audioMetaData.audioFileId}
+                Audio Name: {audioSelected?.audioName}
               </Text>
               <Text style={{ color: "#FFFFFF" }}>
-                BPM: {audioMetaData.tempoBpm}
+                BPM: {audioSelected?.tempoBpm}
               </Text>
               <Text style={{ color: "#FFFFFF" }}>
-                Energy: {audioMetaData.energy}
+                Energy Level: {audioSelected?.energyLevel}
               </Text>
               <Text style={{ color: "#FFFFFF" }}>
-                Tone: {audioMetaData.estimatedPitchHz}
+                Tone: {audioSelected?.tone}
+              </Text>
+              <Text style={{ color: "#FFFFFF" }}>
+                Mood: {audioSelected?.mood}
               </Text>
             </View>
           </Card>
           <Card>
             <Text style={{ margin: 10, color: "#FFFFFF" }}>Target Audio</Text>
-
             {pickedAudioName ? (
               <View
                 style={{
@@ -224,7 +290,7 @@ export default function Dashboard() {
           </Card>
         </View>
 
-        {pickedAudioUri ? (
+        {isImportSelected && audioSelectedDownloaded ? (
           <CustomButton title="Apply DNA" onPress={handleConversion} />
         ) : null}
       </View>
