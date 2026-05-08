@@ -2,6 +2,7 @@ import { renderHook, act } from "@testing-library/react-native";
 
 // Module under test
 import { useAudios } from "@/hooks/useAudios";
+import type { ConvertAudioResponse } from "@/types";
 
 // jest.mock is hoisted above variable declarations, so the factory must be
 // entirely self-contained (no references to outer variables).
@@ -73,6 +74,17 @@ const FAKE_FILE = {
   size: 512,
 };
 
+const requireResponse = (
+  response: ConvertAudioResponse | null,
+  message: string,
+): ConvertAudioResponse => {
+  if (!response) {
+    throw new Error(message);
+  }
+
+  return response;
+};
+
 describe("useAudios — resolveAudioUri", () => {
   it("returns null for null input", () => {
     const { result } = renderHook(() => useAudios());
@@ -135,7 +147,7 @@ describe("useAudios — convertAudio", () => {
     });
 
     const { result } = renderHook(() => useAudios());
-    let response: typeof MOCK_CONVERT_RESPONSE | null = null;
+    let response: ConvertAudioResponse | null = null;
 
     await act(async () => {
       response = await result.current.convertAudio("42", FAKE_FILE);
@@ -158,13 +170,17 @@ describe("useAudios — convertAudio", () => {
     });
 
     const { result } = renderHook(() => useAudios());
-    let response: typeof MOCK_CONVERT_RESPONSE | null = null;
+    let response: ConvertAudioResponse | null = null;
 
     await act(async () => {
       response = await result.current.convertAudio("42", FAKE_FILE);
     });
 
-    expect(response?.convertedAudioUri).toMatch(/^http:\/\//);
+    const ensuredResponse = requireResponse(
+      response,
+      "Expected a conversion response",
+    );
+    expect(ensuredResponse.convertedAudioUri).toMatch(/^http:\/\//);
   });
 
   it("returns null when the server responds with a non-ok status", async () => {
@@ -310,7 +326,7 @@ describe("useAudios — reConvertAudio", () => {
     });
 
     const { result } = renderHook(() => useAudios());
-    let response: typeof MOCK_RECONVERT_RESPONSE | null = null;
+    let response: ConvertAudioResponse | null = null;
 
     await act(async () => {
       response = await result.current.reConvertAudio("7", FAKE_FILE, {
@@ -321,7 +337,11 @@ describe("useAudios — reConvertAudio", () => {
       });
     });
 
-    expect(response?.convertedAudioUri).toMatch(/^http:\/\//);
+    const ensuredResponse = requireResponse(
+      response,
+      "Expected a re-conversion response",
+    );
+    expect(ensuredResponse.convertedAudioUri).toMatch(/^http:\/\//);
   });
 
   it("returns null on network failure", async () => {

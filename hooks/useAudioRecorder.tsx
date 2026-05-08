@@ -5,16 +5,13 @@ import {
 } from "expo-audio";
 import { useAudios } from "./useAudios";
 import { File } from "expo-file-system";
-import { useState } from "react";
-import { AudioDraft } from "@/types";
 
 export const useAudioRecorderHook = () => {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   // Set the audio module to active so it can record and play audio
   const recorderState = useAudioRecorderState(audioRecorder);
 
-  const { uploadAudio, setAudioDrafts, audioDrafts, audioRecordingDraftsDir } =
-    useAudios(); // Use the custom hook to get audio data and loading state
+  const { audioRecordingDraftsDir } = useAudios(); // Use the custom hook to get audio data and loading state
 
   const startRecording = async () => {
     await audioRecorder.prepareToRecordAsync(); // Prepare the audio recorder to start recording
