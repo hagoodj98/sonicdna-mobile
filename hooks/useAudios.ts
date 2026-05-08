@@ -34,7 +34,6 @@ export const useAudios = () => {
     const response = await fetch(`${API_ENDPOINTS.GET_AUDIO_METADATA}`);
 
     const audioElements: { audioFiles: SoundProfile[] } = await response.json();
-    console.log(audioElements.audioFiles);
 
     setAudioMetas(audioElements.audioFiles);
     setLoading(false);
@@ -86,7 +85,6 @@ export const useAudios = () => {
         }
 
         const result = await response.json();
-        console.log("Audio uploaded successfully:", result);
         removeAudioDraft(audio.id); // Remove the audio draft from the in-memory state after successful upload
       } catch (error) {
         console.error("Error uploading audio:", error);
@@ -161,7 +159,6 @@ export const useAudios = () => {
 
         const result = (await response.json()) as ConvertAudioResponse;
         result.convertedAudioUri = resolveAudioUri(result.convertedAudioUri);
-        console.log("Audio converted successfully:", result);
         return result;
       } catch (error) {
         console.error("Error converting audio:", error);
@@ -212,7 +209,6 @@ export const useAudios = () => {
 
         const result = (await response.json()) as ConvertAudioResponse;
         result.convertedAudioUri = resolveAudioUri(result.convertedAudioUri);
-        console.log("Audio re-converted successfully:", result);
         return result;
       } catch (error) {
         console.error("Error re-converting audio:", error);

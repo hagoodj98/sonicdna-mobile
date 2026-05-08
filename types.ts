@@ -56,6 +56,11 @@ export type ConversionPlan = {
   maxGainDb: number;
 };
 
+export type SliderValues = {
+  bpm: number;
+  gainDb: number;
+  pitchShiftSemitones: number;
+};
 export type ReconvertRequestValues = Pick<
   ConversionPlan,
   "targetBPM" | "pitchShiftSemitones" | "gainDb"

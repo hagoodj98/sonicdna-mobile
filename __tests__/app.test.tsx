@@ -23,6 +23,10 @@ jest.mock("@/hooks/useAudios", () => ({
   useAudios: jest.fn(),
 }));
 
+jest.mock("@react-navigation/bottom-tabs", () => ({
+  useBottomTabBarHeight: jest.fn(() => 72),
+}));
+
 jest.mock("react-native-paper", () => {
   const React = require("react");
   const { Pressable, Text } = require("react-native");

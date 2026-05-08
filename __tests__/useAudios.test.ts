@@ -1,4 +1,4 @@
-import { renderHook, act } from "@testing-library/react-native";
+import { renderHook, act, waitFor } from "@testing-library/react-native";
 
 // Module under test
 import { useAudios } from "@/hooks/useAudios";
@@ -19,6 +19,22 @@ jest.mock("expo-file-system", () => ({
 // Attach the fetch mock after the module is imported so it intercepts all calls.
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
+let consoleErrorSpy: jest.SpyInstance;
+
+const renderUseAudios = async () => {
+  const rendered = renderHook(() => useAudios());
+
+  await waitFor(() => {
+    expect(rendered.result.current.audioRecordingDraftsDir).not.toBeNull();
+    expect(mockFetch).toHaveBeenCalled();
+  });
+
+  return rendered;
+};
+
+beforeAll(() => {
+  consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+});
 
 // Default: silently handle the background getAudios fetch that fires on mount.
 beforeEach(() => {
@@ -30,6 +46,10 @@ beforeEach(() => {
 
 afterEach(() => {
   mockFetch.mockClear();
+});
+
+afterAll(() => {
+  consoleErrorSpy.mockRestore();
 });
 
 const MOCK_CONVERT_RESPONSE = {
@@ -86,24 +106,24 @@ const requireResponse = (
 };
 
 describe("useAudios — resolveAudioUri", () => {
-  it("returns null for null input", () => {
-    const { result } = renderHook(() => useAudios());
+  it("returns null for null input", async () => {
+    const { result } = await renderUseAudios();
     expect(result.current.resolveAudioUri(null)).toBeNull();
   });
 
-  it("returns null for undefined input", () => {
-    const { result } = renderHook(() => useAudios());
+  it("returns null for undefined input", async () => {
+    const { result } = await renderUseAudios();
     expect(result.current.resolveAudioUri(undefined)).toBeNull();
   });
 
-  it("passes through a full URL unchanged", () => {
-    const { result } = renderHook(() => useAudios());
+  it("passes through a full URL unchanged", async () => {
+    const { result } = await renderUseAudios();
     const url = "http://192.168.1.136:3000/api/stream-temp-audio/file.wav";
     expect(result.current.resolveAudioUri(url)).toBe(url);
   });
 
-  it("prepends BASE_URL to a relative path starting with /", () => {
-    const { result } = renderHook(() => useAudios());
+  it("prepends BASE_URL to a relative path starting with /", async () => {
+    const { result } = await renderUseAudios();
     const resolved = result.current.resolveAudioUri(
       "/api/stream-temp-audio/file.wav",
     );
@@ -112,8 +132,8 @@ describe("useAudios — resolveAudioUri", () => {
     );
   });
 
-  it("prepends BASE_URL with a slash to a relative path not starting with /", () => {
-    const { result } = renderHook(() => useAudios());
+  it("prepends BASE_URL with a slash to a relative path not starting with /", async () => {
+    const { result } = await renderUseAudios();
     const resolved = result.current.resolveAudioUri(
       "api/stream-temp-audio/file.wav",
     );
@@ -125,7 +145,7 @@ describe("useAudios — resolveAudioUri", () => {
 
 describe("useAudios — convertAudio", () => {
   it("returns null when audioFileId is empty", async () => {
-    const { result } = renderHook(() => useAudios());
+    const { result } = await renderUseAudios();
 
     let response;
     await act(async () => {
@@ -146,7 +166,7 @@ describe("useAudios — convertAudio", () => {
       json: async () => MOCK_CONVERT_RESPONSE,
     });
 
-    const { result } = renderHook(() => useAudios());
+    const { result } = await renderUseAudios();
     let response: ConvertAudioResponse | null = null;
 
     await act(async () => {
@@ -169,7 +189,7 @@ describe("useAudios — convertAudio", () => {
       json: async () => ({ ...MOCK_CONVERT_RESPONSE }),
     });
 
-    const { result } = renderHook(() => useAudios());
+    const { result } = await renderUseAudios();
     let response: ConvertAudioResponse | null = null;
 
     await act(async () => {
@@ -194,7 +214,7 @@ describe("useAudios — convertAudio", () => {
         statusText: "Internal Server Error",
       });
 
-    const { result } = renderHook(() => useAudios());
+    const { result } = await renderUseAudios();
     let response;
 
     await act(async () => {
@@ -212,7 +232,7 @@ describe("useAudios — convertAudio", () => {
       })
       .mockRejectedValueOnce(new TypeError("Network request failed"));
 
-    const { result } = renderHook(() => useAudios());
+    const { result } = await renderUseAudios();
     let response;
 
     await act(async () => {
@@ -225,7 +245,7 @@ describe("useAudios — convertAudio", () => {
 
 describe("useAudios — reConvertAudio", () => {
   it("returns null when audioFileId is empty", async () => {
-    const { result } = renderHook(() => useAudios());
+    const { result } = await renderUseAudios();
     let response;
 
     await act(async () => {
@@ -250,7 +270,7 @@ describe("useAudios — reConvertAudio", () => {
       json: async () => MOCK_RECONVERT_RESPONSE,
     });
 
-    const { result } = renderHook(() => useAudios());
+    const { result } = await renderUseAudios();
 
     await act(async () => {
       await result.current.reConvertAudio("7", FAKE_FILE, {
@@ -276,7 +296,7 @@ describe("useAudios — reConvertAudio", () => {
       json: async () => MOCK_RECONVERT_RESPONSE,
     });
 
-    const { result } = renderHook(() => useAudios());
+    const { result } = await renderUseAudios();
 
     await act(async () => {
       await result.current.reConvertAudio("7", FAKE_FILE, {
@@ -301,7 +321,7 @@ describe("useAudios — reConvertAudio", () => {
       json: async () => MOCK_RECONVERT_RESPONSE,
     });
 
-    const { result } = renderHook(() => useAudios());
+    const { result } = await renderUseAudios();
 
     await act(async () => {
       await result.current.reConvertAudio("7", FAKE_FILE, {
@@ -325,7 +345,7 @@ describe("useAudios — reConvertAudio", () => {
       json: async () => ({ ...MOCK_RECONVERT_RESPONSE }),
     });
 
-    const { result } = renderHook(() => useAudios());
+    const { result } = await renderUseAudios();
     let response: ConvertAudioResponse | null = null;
 
     await act(async () => {
@@ -352,7 +372,7 @@ describe("useAudios — reConvertAudio", () => {
       })
       .mockRejectedValueOnce(new TypeError("Network request failed"));
 
-    const { result } = renderHook(() => useAudios());
+    const { result } = await renderUseAudios();
     let response;
 
     await act(async () => {
