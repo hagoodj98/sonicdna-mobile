@@ -1,8 +1,14 @@
 import Header from "@/components/Header";
-import Card from "@/components/ui/Card";
 import IconCustomButton from "@/components/ui/IconButton";
-import { Text, View, Pressable, Alert } from "react-native";
-import React, { useEffect, useState } from "react";
+import {
+  Text,
+  View,
+  Pressable,
+  Alert,
+  ScrollView,
+  StyleSheet,
+} from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
 import * as DocumentPicker from "expo-document-picker";
 import * as Sharing from "expo-sharing";
 import { Directory, File, Paths } from "expo-file-system";
@@ -12,45 +18,48 @@ import Picker from "@/components/ui/Picker";
 import { useAudios } from "@/hooks/useAudios";
 import { SoundProfile, PickerDocfileType } from "@/types";
 import Slider from "@react-native-community/slider";
-export default function Dashboard() {
-  const [importedAudio, setImportedAudio] = useState<PickerDocfileType | null>({
-    name: "",
-    uri: "",
-    mimeType: "",
-    size: 0,
-  });
 
+const sliderRanges = {
+  bpm: { min: 40, max: 180 },
+  gainDb: { min: -12, max: 12 },
+  pitchShiftSemitones: { min: -12, max: 12 },
+};
+
+type SliderValues = {
+  bpm: number;
+  gainDb: number;
+  pitchShiftSemitones: number;
+};
+
+const initialSliderValues: SliderValues = {
+  bpm: 0,
+  gainDb: 0,
+  pitchShiftSemitones: 0,
+};
+
+export default function Dashboard() {
+  const [importedAudio, setImportedAudio] = useState<PickerDocfileType | null>(
+    null,
+  );
   const [downloadedAudioUri, setDownloadedAudioUri] = useState<string | null>(
     null,
   );
-  const sliderRanges = {
-    bpm: { min: 40, max: 180 },
-    gainDb: { min: -12, max: 12 },
-    pitchShiftSemitones: { min: -12, max: 12 },
-  };
-  const [sliderValues, setSliderValues] = useState({
-    bpm: 0,
-    gainDb: 0,
-    pitchShiftSemitones: 0,
-  });
-  const [lastAppliedSliderValues, setLastAppliedSliderValues] = useState<{
-    bpm: number;
-    gainDb: number;
-    pitchShiftSemitones: number;
-  } | null>(null);
-  const [importedTempoBpm, setImportedTempoBpm] = useState<number | undefined>(undefined);
+  const [sliderValues, setSliderValues] =
+    useState<SliderValues>(initialSliderValues);
+  const [lastAppliedSliderValues, setLastAppliedSliderValues] =
+    useState<SliderValues | null>(null);
+  const [importedTempoBpm, setImportedTempoBpm] = useState<number | undefined>(
+    undefined,
+  );
 
   const [isImportedPlaying, setIsImportedPlaying] = useState(false);
   const [isImportSelected, setIsImportSelected] = useState(false);
-  const { audioMetas, reConvertAudio, downloadAudio, convertAudio } =
-    useAudios();
   const [audioSelected, setAudioSelected] = useState<SoundProfile | null>(null);
   const [isCoversionResultVisible, setIsConversionResultVisible] =
     useState(false);
   const [isReConversionResultVisible, setIsReConversionResultVisible] =
     useState(false);
   const [isDNASoundPlaying, setIsDNASoundPlaying] = useState(false);
-  const { setPlaybackUri, player, status } = useAudioPlayerControl(null);
   const [isLoading, setIsLoading] = useState(false);
   const [audioSelectedDownloaded, setAudioSelectedDownloaded] = useState(false);
   const [convertedAudioUri, setConvertedAudioUri] = useState<string | null>(
@@ -59,18 +68,40 @@ export default function Dashboard() {
   const [isConvertedPlaying, setIsConvertedPlaying] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
+  const { audioMetas, reConvertAudio, downloadAudio, convertAudio } =
+    useAudios();
+  const { setPlaybackUri, player, status } = useAudioPlayerControl(null);
+
+  const hasChangesSinceLastApply =
+    lastAppliedSliderValues === null ||
+    sliderValues.bpm !== lastAppliedSliderValues.bpm ||
+    sliderValues.pitchShiftSemitones !==
+      lastAppliedSliderValues.pitchShiftSemitones ||
+    sliderValues.gainDb !== lastAppliedSliderValues.gainDb;
+
+  const showAdjustments =
+    isCoversionResultVisible || isReConversionResultVisible;
+
+  const stopAllPlayback = useCallback(() => {
+    player.pause();
+    setPlaybackUri(null);
+    setIsImportedPlaying(false);
+    setIsDNASoundPlaying(false);
+    setIsConvertedPlaying(false);
+  }, [player, setPlaybackUri]);
+
   const handlePickAudio = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: "audio/*", // Only allow audio files
-        multiple: false, // Only allow single file selection
-        copyToCacheDirectory: true, // Ensure the file is copied to a cache directory for easier access
+        type: "audio/*",
+        multiple: false,
+        copyToCacheDirectory: true,
       });
-      // Check if the user canceled the picker or if no file was selected
+
       if (result.canceled || !result.assets?.length) {
         return;
       }
-      // Get the selected audio file's URI and name
+
       const selectedAudio = result.assets[0];
       setIsImportSelected(true);
       setImportedAudio(
@@ -88,108 +119,115 @@ export default function Dashboard() {
     }
   };
 
-  const handleConversion = () => {
+  const handleConversion = async () => {
+    if (!isImportSelected || !audioSelectedDownloaded || !importedAudio) {
+      Alert.alert("Select a source and target audio first");
+      return;
+    }
+
     setIsLoading(true);
-    if (isImportSelected && audioSelectedDownloaded) {
-      if (!importedAudio) {
-        setIsLoading(false);
-        return Alert.alert("No audio file imported for conversion");
-      }
-      convertAudio(audioSelected?.audioFileId || "", importedAudio).then(
-        (conversionResult) => {
-          if (conversionResult) {
-            setIsConversionResultVisible(true);
-            setConvertedAudioUri(conversionResult.convertedAudioUri);
-            const appliedValues = {
-              bpm: conversionResult.conversionPlan.targetBPM,
-              pitchShiftSemitones:
-                conversionResult.conversionPlan.pitchShiftSemitones,
-              gainDb: conversionResult.conversionPlan.gainDb,
-            };
-            setSliderValues(appliedValues);
-            setLastAppliedSliderValues(appliedValues);
-            setImportedTempoBpm(conversionResult.conversionPlan.importedTempoBpm);
-          } else {
-            Alert.alert("Failed to convert audio");
-          }
-          setIsLoading(false);
-        },
+    try {
+      const conversionResult = await convertAudio(
+        audioSelected?.audioFileId || "",
+        importedAudio,
       );
+
+      if (!conversionResult) {
+        Alert.alert("Failed to convert audio");
+        return;
+      }
+
+      setIsConversionResultVisible(true);
+      setIsReConversionResultVisible(false);
+      setConvertedAudioUri(conversionResult.convertedAudioUri);
+
+      const appliedValues = {
+        bpm: conversionResult.conversionPlan.targetBPM,
+        pitchShiftSemitones: conversionResult.conversionPlan.pitchShiftSemitones,
+        gainDb: conversionResult.conversionPlan.gainDb,
+      };
+      setSliderValues(appliedValues);
+      setLastAppliedSliderValues(appliedValues);
+      setImportedTempoBpm(conversionResult.conversionPlan.importedTempoBpm);
+    } finally {
+      setIsLoading(false);
     }
   };
+
   const handleAudioMetaData = (value: string | null) => {
     const selectedMeta = audioMetas.find((meta) => meta.audioFileId === value);
-    if (selectedMeta) {
-      console.log("old selected", selectedMeta);
-
-      setAudioSelected(selectedMeta);
-    } else {
+    if (!selectedMeta) {
       setAudioSelected(null);
       setAudioSelectedDownloaded(false);
+      return;
     }
-  };
-  useEffect(() => {
-    if (audioSelected) {
-      setAudioSelectedDownloaded(false); // Reset the downloaded state when a new audio is selected
-      setDownloadedAudioUri(null);
-      setConvertedAudioUri(null);
-      setIsConversionResultVisible(false);
-      setIsConvertedPlaying(false);
-    }
-  }, [audioSelected]);
 
-  useEffect(() => {
-    if (importedAudio?.uri) {
-      setConvertedAudioUri(null);
-      setIsConversionResultVisible(false);
-      setIsConvertedPlaying(false);
+    setAudioSelected(selectedMeta);
+  };
+
+  const handleDownloadAudio = async () => {
+    if (!audioSelected?.audioFileId) {
+      Alert.alert("Select source audio first");
+      return;
     }
-  }, [importedAudio?.uri]);
-  const handleDownloadAudio = () => {
+
     setIsLoading(true);
-    downloadAudio(audioSelected?.audioFileId || "").then((uri) => {
-      if (uri) {
-        setDownloadedAudioUri(uri); // Set the downloaded audio URI to the state
-        setAudioSelectedDownloaded(true); // Set the downloaded audio state to true to update the UI accordingly
-      } else {
+    try {
+      const uri = await downloadAudio(audioSelected.audioFileId);
+      if (!uri) {
         Alert.alert("Failed to download audio");
+        return;
       }
-      setIsLoading(false);
-    });
-  };
-  const handleReConversion = () => {
-    setIsLoading(true);
-    if (isImportSelected && audioSelectedDownloaded) {
-      if (!importedAudio) {
-        setIsLoading(false);
-        return Alert.alert("No audio file imported for reconversion");
-      }
-      reConvertAudio(audioSelected?.audioFileId || "", importedAudio, {
-        targetBPM: sliderValues?.bpm || 0,
-        pitchShiftSemitones: sliderValues?.pitchShiftSemitones || 0,
-        gainDb: sliderValues?.gainDb || 0,
-        importedTempoBpm,
-      }).then((reConversionResult) => {
-        if (reConversionResult) {
-          setIsConversionResultVisible(false); // Hide the original conversion result sliders and values when showing the reconversion results to avoid confusion for the user between the original conversion parameters and the new reconversion parameters, which helps provide a clearer user experience by only displaying the relevant transformation parameters based on whether the user is viewing the original conversion results or the new reconversion results after adjusting the sliders and applying the changes.
-          setIsReConversionResultVisible(true);
-          const reAppliedValues = {
-            bpm: reConversionResult.conversionPlan.targetBPM,
-            pitchShiftSemitones:
-              reConversionResult.conversionPlan.pitchShiftSemitones,
-            gainDb: reConversionResult.conversionPlan.gainDb,
-          };
-          setSliderValues(reAppliedValues);
-          setLastAppliedSliderValues(reAppliedValues);
 
-          setConvertedAudioUri(reConversionResult.convertedAudioUri);
-        } else {
-          Alert.alert("Failed to re-convert audio");
-        }
-        setIsLoading(false);
-      });
+      setDownloadedAudioUri(uri);
+      setAudioSelectedDownloaded(true);
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const handleReConversion = async () => {
+    if (!isImportSelected || !audioSelectedDownloaded || !importedAudio) {
+      Alert.alert("Select a source and target audio first");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const reConversionResult = await reConvertAudio(
+        audioSelected?.audioFileId || "",
+        importedAudio,
+        {
+          targetBPM: sliderValues.bpm,
+          pitchShiftSemitones: sliderValues.pitchShiftSemitones,
+          gainDb: sliderValues.gainDb,
+          importedTempoBpm,
+        },
+      );
+
+      if (!reConversionResult) {
+        Alert.alert("Failed to re-convert audio");
+        return;
+      }
+
+      setIsConversionResultVisible(false);
+      setIsReConversionResultVisible(true);
+
+      const reAppliedValues = {
+        bpm: reConversionResult.conversionPlan.targetBPM,
+        pitchShiftSemitones:
+          reConversionResult.conversionPlan.pitchShiftSemitones,
+        gainDb: reConversionResult.conversionPlan.gainDb,
+      };
+
+      setSliderValues(reAppliedValues);
+      setLastAppliedSliderValues(reAppliedValues);
+      setConvertedAudioUri(reConversionResult.convertedAudioUri);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleShareConvertedAudio = async () => {
     try {
       if (!convertedAudioUri) {
@@ -209,16 +247,14 @@ export default function Dashboard() {
       if (!sharedAudioDir.exists) {
         sharedAudioDir.create({ idempotent: true, intermediates: true });
       }
-      // Clear any previously shared files in the shared audio directory to keep it lightweight and avoid clutter
-      const cachedFiles = sharedAudioDir.list();
-      for (const cachedFile of cachedFiles) {
+
+      for (const cachedFile of sharedAudioDir.list()) {
         cachedFile.delete();
       }
-      // Determine the file extension of the converted audio to set the correct MIME type for sharing
+
       const fileExtension = convertedAudioUri.toLowerCase().includes(".wav")
         ? "wav"
         : "m4a";
-      // Create a new file in the shared audio directory with the appropriate file extension for sharing
       const destinationFile = new File(
         sharedAudioDir,
         `sound-dna-converted.${fileExtension}`,
@@ -229,7 +265,7 @@ export default function Dashboard() {
         destinationFile,
         { idempotent: true },
       );
-      // Use the Sharing API to share the converted audio file, providing the correct MIME type based on the file extension for better compatibility with sharing targets
+
       await Sharing.shareAsync(downloadedFile.uri, {
         dialogTitle: "Share converted audio",
         mimeType: fileExtension === "wav" ? "audio/wav" : "audio/m4a",
@@ -242,231 +278,171 @@ export default function Dashboard() {
       setIsSharing(false);
     }
   };
-  useEffect(() => {
-    console.log(sliderValues, "slider");
-    console.log(sliderValues, "reslider");
-    console.log("values");
-  }, [sliderValues]);
 
   useEffect(() => {
-    if (status.didJustFinish) {
-      // Set the imported audio playing state to false to update the UI accordingly when the audio finishes playing
-
-      setIsImportedPlaying(false);
-      setIsDNASoundPlaying(false);
-      setIsConvertedPlaying(false);
-
-      // Reset the playback URI to null to stop the audio player and reset its state
-      setPlaybackUri(null);
+    if (!audioSelected) {
+      return;
     }
-  }, [setPlaybackUri, status.didJustFinish]);
+
+    setAudioSelectedDownloaded(false);
+    setDownloadedAudioUri(null);
+    setConvertedAudioUri(null);
+    setIsConversionResultVisible(false);
+    setIsReConversionResultVisible(false);
+    setLastAppliedSliderValues(null);
+    setSliderValues(initialSliderValues);
+    setImportedTempoBpm(undefined);
+    setIsConvertedPlaying(false);
+  }, [audioSelected]);
+
+  useEffect(() => {
+    if (!importedAudio?.uri) {
+      return;
+    }
+
+    setConvertedAudioUri(null);
+    setIsConversionResultVisible(false);
+    setIsReConversionResultVisible(false);
+    setLastAppliedSliderValues(null);
+    setSliderValues(initialSliderValues);
+    setImportedTempoBpm(undefined);
+    setIsConvertedPlaying(false);
+  }, [importedAudio?.uri]);
+
+  useEffect(() => {
+    if (!status.didJustFinish) {
+      return;
+    }
+
+    stopAllPlayback();
+  }, [status.didJustFinish, stopAllPlayback]);
 
   return (
-    <View
-      style={{ flex: 1, alignContent: "center", backgroundColor: "#0B0F1A" }}
-    >
+    <View style={styles.screen}>
       <Header title="Sound DNA API" />
-      <View style={{ marginTop: 20, justifyContent: "center" }}>
-        <Picker audioMetas={audioMetas} getValue={handleAudioMetaData} />
-      </View>
-      <View style={{ flex: 1, margin: 10, justifyContent: "center" }}>
-        <View
-          style={{
-            flexDirection: "row",
-            gap: 20,
-            justifyContent: "space-between",
-          }}
-        >
-          <Card>
-            <View
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ color: "#FFFFFF" }}>Source DNA</Text>
-            </View>
-            {audioSelectedDownloaded ? (
-              <View
-                style={{
-                  flex: 1,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
+
+      <ScrollView
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.pickerWrap}>
+          <Picker audioMetas={audioMetas} getValue={handleAudioMetaData} />
+        </View>
+
+        <View style={styles.panelGrid}>
+          <View style={styles.panel}>
+            <View style={styles.panelHeaderRow}>
+              <Text style={styles.panelTitle}>Source DNA</Text>
+              {audioSelectedDownloaded ? (
                 <IconCustomButton
                   icon={isDNASoundPlaying ? "pause" : "play"}
                   iconColor="#4DD9FF"
-                  size={26}
+                  size={24}
                   disabled={isLoading}
                   onPress={() => {
-                    if (downloadedAudioUri) {
-                      if (isDNASoundPlaying) {
-                        player.pause();
-                        setPlaybackUri(null); // Stop playback by setting the playback URI to null
-                        setIsDNASoundPlaying(false); // Set the DNA audio playing state to false to update the UI accordingly
-                        return;
-                      }
-
-                      setPlaybackUri(downloadedAudioUri); // Set the playback URI to the downloaded audio file's URI to play it in the audio player
-                      setIsDNASoundPlaying(true); // Set the DNA audio playing state to true to update the UI accordingly
+                    if (!downloadedAudioUri) {
+                      return;
                     }
+
+                    if (isDNASoundPlaying) {
+                      stopAllPlayback();
+                      return;
+                    }
+
+                    setPlaybackUri(downloadedAudioUri);
+                    setIsDNASoundPlaying(true);
+                    setIsImportedPlaying(false);
+                    setIsConvertedPlaying(false);
                   }}
                 />
-              </View>
-            ) : audioSelected ? (
-              <IconCustomButton
-                icon={isLoading ? "loading" : "download"}
-                iconColor="#9B6BFF"
-                size={26}
-                disabled={isLoading}
-                onPress={handleDownloadAudio}
-              />
-            ) : null}
-
-            <View
-              style={{
-                gap: 10,
-                justifyContent: "flex-end",
-
-                flex: 1,
-                paddingHorizontal: 10,
-              }}
-            >
-              <Text style={{ color: "#FFFFFF" }}>
-                Audio Name: {audioSelected?.audioName}
-              </Text>
-              <Text style={{ color: "#FFFFFF" }}>
-                BPM: {audioSelected?.tempoBpm}
-              </Text>
-              <Text style={{ color: "#FFFFFF" }}>
-                Energy Level: {audioSelected?.energyLevel}
-              </Text>
-              <Text style={{ color: "#FFFFFF" }}>
-                Tone: {audioSelected?.tone}
-              </Text>
-              <Text style={{ color: "#FFFFFF" }}>
-                Mood: {audioSelected?.mood}
-              </Text>
+              ) : audioSelected ? (
+                <IconCustomButton
+                  icon={isLoading ? "loading" : "download"}
+                  iconColor="#FF7A3D"
+                  size={24}
+                  disabled={isLoading}
+                  onPress={handleDownloadAudio}
+                />
+              ) : null}
             </View>
-          </Card>
-          <Card>
-            <Text style={{ margin: 10, color: "#FFFFFF" }}>Target Audio</Text>
-            {importedAudio?.name ? (
-              <View
-                style={{
-                  flex: 1,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
+
+            <View style={styles.metaGrid}>
+              <Text style={styles.metaRow}>Audio Name: {audioSelected?.audioName || "-"}</Text>
+              <Text style={styles.metaRow}>BPM: {audioSelected?.tempoBpm || "-"}</Text>
+              <Text style={styles.metaRow}>
+                Energy Level: {audioSelected?.energyLevel || "-"}
+              </Text>
+              <Text style={styles.metaRow}>Tone: {audioSelected?.tone || "-"}</Text>
+              <Text style={styles.metaRow}>Mood: {audioSelected?.mood || "-"}</Text>
+            </View>
+          </View>
+
+          <View style={styles.panel}>
+            <View style={styles.panelHeaderRow}>
+              <Text style={styles.panelTitle}>Target Audio</Text>
+              {importedAudio?.name ? (
                 <IconCustomButton
                   icon={isImportedPlaying ? "pause" : "play"}
                   iconColor="#4DD9FF"
-                  size={26}
+                  size={24}
                   disabled={isLoading}
                   onPress={() => {
-                    if (importedAudio?.uri) {
-                      if (isImportedPlaying) {
-                        player.pause();
-                        setPlaybackUri(null); // Stop playback by setting the playback URI to null
-                        setIsImportedPlaying(false); // Set the imported audio playing state to false to update the UI accordingly
-                        return;
-                      }
-                      setPlaybackUri(importedAudio.uri); // Set the playback URI to the selected audio file's URI to play it in the audio player
-                      setIsImportedPlaying(true); // Set the imported audio playing state to true to update the UI accordingly
+                    if (!importedAudio?.uri) {
+                      return;
                     }
+
+                    if (isImportedPlaying) {
+                      stopAllPlayback();
+                      return;
+                    }
+
+                    setPlaybackUri(importedAudio.uri);
+                    setIsImportedPlaying(true);
+                    setIsDNASoundPlaying(false);
+                    setIsConvertedPlaying(false);
                   }}
                 />
-              </View>
-            ) : null}
-            {importedAudio?.name ? (
-              <View
-                style={{
-                  flex: 1,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#FFFFFF",
-                    fontSize: 14,
-                    textAlign: "center",
-                    fontWeight: "600",
-                    marginTop: 6,
-                  }}
-                >
-                  waveform
-                </Text>
-              </View>
-            ) : null}
-
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "#161C2D",
-                borderRadius: 18,
-                borderWidth: 1,
-                justifyContent: importedAudio?.name ? "flex-end" : "center",
-                borderColor: "#252D42",
-              }}
-            >
-              <Pressable
-                onPress={handlePickAudio}
-                testID="target-audio-picker"
-                disabled={isLoading}
-                style={{
-                  flex: 1,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: "#3A4561",
-                  borderStyle: "dashed",
-                  backgroundColor: "#0E1422",
-                  justifyContent: importedAudio?.name ? "flex-end" : "center",
-                  alignItems: "center",
-                  paddingHorizontal: 6,
-                }}
-              >
-                <IconCustomButton
-                  icon="upload"
-                  iconColor="#9B6BFF"
-                  disabled={isLoading}
-                  size={importedAudio?.name ? 25 : 34}
-                />
-                <Text
-                  style={{
-                    color: "#FFFFFF",
-                    fontSize: 14,
-                    textAlign: "center",
-                    fontWeight: "600",
-                  }}
-                >
-                  {importedAudio?.name ? "Audio Selected" : "Import Audio"}
-                </Text>
-
-                {importedAudio?.name ? (
-                  <Text
-                    style={{
-                      color: "#8892A4",
-                      fontSize: 12,
-
-                      textAlign: "center",
-                    }}
-                    numberOfLines={2}
-                  >
-                    {importedAudio.name}
-                  </Text>
-                ) : null}
-              </Pressable>
+              ) : null}
             </View>
-          </Card>
+
+            <Pressable
+              onPress={handlePickAudio}
+              testID="target-audio-picker"
+              disabled={isLoading}
+              style={[
+                styles.uploadZone,
+                importedAudio?.name
+                  ? styles.uploadZoneFilled
+                  : styles.uploadZoneEmpty,
+              ]}
+            >
+              <IconCustomButton
+                icon="upload"
+                iconColor="#FF7A3D"
+                disabled={isLoading}
+                size={importedAudio?.name ? 24 : 34}
+              />
+
+              <Text style={styles.uploadTitle}>
+                {importedAudio?.name ? "Audio Selected" : "Import Audio"}
+              </Text>
+
+              {importedAudio?.name ? (
+                <Text style={styles.uploadSubtitle} numberOfLines={2}>
+                  {importedAudio.name}
+                </Text>
+              ) : (
+                <Text style={styles.uploadSubtitle}>Tap to choose a target track</Text>
+              )}
+            </Pressable>
+          </View>
         </View>
-        {isCoversionResultVisible && (
-          <View style={{ marginTop: 16 }}>
-            <Text style={{ color: "#FFFFFF", textAlign: "center" }}>
-              Pitch Ratio
-            </Text>
+
+        {showAdjustments ? (
+          <View style={styles.adjustSection}>
+            <Text style={styles.sectionTitle}>Adjustment Controls</Text>
+
+            <Text style={styles.sliderLabel}>Pitch Shift (semitones)</Text>
             <Slider
               minimumValue={sliderRanges.pitchShiftSemitones.min}
               maximumValue={sliderRanges.pitchShiftSemitones.max}
@@ -480,10 +456,11 @@ export default function Dashboard() {
               step={0.1}
               disabled={isLoading}
               minimumTrackTintColor="#4DD9FF"
-              maximumTrackTintColor="#3A4561"
-              thumbTintColor="#9B6BFF"
+              maximumTrackTintColor="#2A344B"
+              thumbTintColor="#FF7A3D"
             />
-            <Text style={{ color: "#FFFFFF", textAlign: "center" }}>BPM</Text>
+
+            <Text style={styles.sliderLabel}>Target BPM</Text>
             <Slider
               minimumValue={sliderRanges.bpm.min}
               maximumValue={sliderRanges.bpm.max}
@@ -497,12 +474,11 @@ export default function Dashboard() {
               step={1}
               disabled={isLoading}
               minimumTrackTintColor="#4DD9FF"
-              maximumTrackTintColor="#3A4561"
-              thumbTintColor="#9B6BFF"
+              maximumTrackTintColor="#2A344B"
+              thumbTintColor="#FF7A3D"
             />
-            <Text style={{ color: "#FFFFFF", textAlign: "center" }}>
-              Gain (dB)
-            </Text>
+
+            <Text style={styles.sliderLabel}>Gain (dB)</Text>
             <Slider
               minimumValue={sliderRanges.gainDb.min}
               maximumValue={sliderRanges.gainDb.max}
@@ -516,172 +492,51 @@ export default function Dashboard() {
               step={0.1}
               disabled={isLoading}
               minimumTrackTintColor="#4DD9FF"
-              maximumTrackTintColor="#3A4561"
-              thumbTintColor="#9B6BFF"
+              maximumTrackTintColor="#2A344B"
+              thumbTintColor="#FF7A3D"
             />
-            {convertedAudioUri && (
-              <Card>
-                <Text style={{ color: "#FFFFFF", margin: 10 }}>
-                  Converted Audio
-                </Text>
-                <View
-                  style={{
-                    flex: 1,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
+
+            {convertedAudioUri ? (
+              <View style={styles.convertedWrap}>
+                <Text style={styles.convertedTitle}>Converted Audio</Text>
+                <View style={styles.convertedActionsRow}>
                   <IconCustomButton
                     icon={isConvertedPlaying ? "pause" : "play"}
                     iconColor="#4DD9FF"
-                    size={26}
+                    size={24}
                     disabled={isLoading}
                     onPress={() => {
                       if (isConvertedPlaying) {
-                        player.pause();
-                        setPlaybackUri(null);
-                        setIsConvertedPlaying(false);
+                        stopAllPlayback();
                         return;
                       }
+
                       setPlaybackUri(convertedAudioUri);
                       setIsConvertedPlaying(true);
+                      setIsImportedPlaying(false);
+                      setIsDNASoundPlaying(false);
                     }}
                   />
 
                   <IconCustomButton
                     icon={isSharing ? "loading" : "share-variant"}
                     iconColor="#4DD9FF"
-                    size={26}
+                    size={24}
                     disabled={isLoading}
                     onPress={isSharing ? undefined : handleShareConvertedAudio}
                   />
-                  <CustomButton
-                    title={isLoading ? "Re-Applying DNA..." : "Re-Apply DNA"}
-                    onPress={handleReConversion}
-                    //also disable the button if the slider values are the same as the original conversion plan values to prevent unnecessary reconversion requests to the server when the user hasn't made any changes to the transformation parameters, which helps optimize performance and reduce server load by only allowing reconversion when there are actual changes to apply based on the user's adjustments to the sliders.
-                    disabled={
-                      isLoading ||
-                      (lastAppliedSliderValues !== null &&
-                        sliderValues.bpm === lastAppliedSliderValues.bpm &&
-                        sliderValues.pitchShiftSemitones === lastAppliedSliderValues.pitchShiftSemitones &&
-                        sliderValues.gainDb === lastAppliedSliderValues.gainDb)
-                    }
-                  />
                 </View>
-              </Card>
-            )}
-          </View>
-        )}
-        {isReConversionResultVisible && (
-          <View style={{ marginTop: 16 }}>
-            <Text style={{ color: "#FFFFFF", textAlign: "center" }}>
-              Pitch Ratio
-            </Text>
-            <Slider
-              minimumValue={sliderRanges.pitchShiftSemitones.min}
-              maximumValue={sliderRanges.pitchShiftSemitones.max}
-              value={sliderValues?.pitchShiftSemitones || 0}
-              onValueChange={(value) =>
-                setSliderValues((prev) => ({
-                  ...prev,
-                  pitchShiftSemitones: value,
-                }))
-              }
-              step={0.1}
-              disabled={isLoading}
-              minimumTrackTintColor="#4DD9FF"
-              maximumTrackTintColor="#3A4561"
-              thumbTintColor="#9B6BFF"
-            />
-            <Text style={{ color: "#FFFFFF", textAlign: "center" }}>BPM</Text>
-            <Slider
-              minimumValue={sliderRanges.bpm.min}
-              maximumValue={sliderRanges.bpm.max}
-              value={sliderValues?.bpm || 0}
-              onValueChange={(value) =>
-                setSliderValues((prev) => ({
-                  ...prev,
-                  bpm: value,
-                }))
-              }
-              step={1}
-              disabled={isLoading}
-              minimumTrackTintColor="#4DD9FF"
-              maximumTrackTintColor="#3A4561"
-              thumbTintColor="#9B6BFF"
-            />
-            <Text style={{ color: "#FFFFFF", textAlign: "center" }}>
-              Gain (dB)
-            </Text>
-            <Slider
-              minimumValue={sliderRanges.gainDb.min}
-              maximumValue={sliderRanges.gainDb.max}
-              value={sliderValues?.gainDb || 0}
-              onValueChange={(value) =>
-                setSliderValues((prev) => ({
-                  ...prev,
-                  gainDb: value,
-                }))
-              }
-              step={0.1}
-              disabled={isLoading}
-              minimumTrackTintColor="#4DD9FF"
-              maximumTrackTintColor="#3A4561"
-              thumbTintColor="#9B6BFF"
-            />
-            {convertedAudioUri && (
-              <Card>
-                <Text style={{ color: "#FFFFFF", margin: 10 }}>
-                  Converted Audio
-                </Text>
-                <View
-                  style={{
-                    flex: 1,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <IconCustomButton
-                    icon={isConvertedPlaying ? "pause" : "play"}
-                    iconColor="#4DD9FF"
-                    size={26}
-                    disabled={isLoading}
-                    onPress={() => {
-                      if (isConvertedPlaying) {
-                        player.pause();
-                        setPlaybackUri(null);
-                        setIsConvertedPlaying(false);
-                        return;
-                      }
-                      setPlaybackUri(convertedAudioUri);
-                      setIsConvertedPlaying(true);
-                    }}
-                  />
 
-                  <IconCustomButton
-                    icon={isSharing ? "loading" : "share-variant"}
-                    iconColor="#4DD9FF"
-                    size={26}
-                    disabled={isLoading}
-                    onPress={isSharing ? undefined : handleShareConvertedAudio}
-                  />
-                  <CustomButton
-                    title={isLoading ? "Re-Applying DNA..." : "Re-Apply DNA"}
-                    onPress={handleReConversion}
-                    //also disable the button if the slider values are the same as the original conversion plan values to prevent unnecessary reconversion requests to the server when the user hasn't made any changes to the transformation parameters, which helps optimize performance and reduce server load by only allowing reconversion when there are actual changes to apply based on the user's adjustments to the sliders.
-                    disabled={
-                      isLoading ||
-                      (lastAppliedSliderValues !== null &&
-                        sliderValues.bpm === lastAppliedSliderValues.bpm &&
-                        sliderValues.pitchShiftSemitones === lastAppliedSliderValues.pitchShiftSemitones &&
-                        sliderValues.gainDb === lastAppliedSliderValues.gainDb)
-                    }
-                  />
-                </View>
-              </Card>
-            )}
+                <CustomButton
+                  title={isLoading ? "Re-Applying DNA..." : "Re-Apply DNA"}
+                  onPress={handleReConversion}
+                  disabled={isLoading || !hasChangesSinceLastApply}
+                />
+              </View>
+            ) : null}
           </View>
-        )}
+        ) : null}
+
         {isImportSelected && audioSelectedDownloaded ? (
           <CustomButton
             title={isLoading ? "Converting..." : "Apply DNA"}
@@ -689,7 +544,129 @@ export default function Dashboard() {
             disabled={isLoading}
           />
         ) : null}
-      </View>
+      </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#09111E",
+  },
+  contentContainer: {
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 28,
+    gap: 14,
+  },
+  pickerWrap: {
+    borderRadius: 14,
+    backgroundColor: "#111C30",
+    borderWidth: 1,
+    borderColor: "#1F2E46",
+    padding: 10,
+  },
+  panelGrid: {
+    gap: 12,
+  },
+  panel: {
+    backgroundColor: "#111C30",
+    borderWidth: 1,
+    borderColor: "#1F2E46",
+    borderRadius: 16,
+    padding: 12,
+    minHeight: 210,
+    gap: 12,
+  },
+  panelHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  panelTitle: {
+    color: "#F2F6FF",
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+  metaGrid: {
+    backgroundColor: "#0B1627",
+    borderWidth: 1,
+    borderColor: "#1D2B42",
+    borderRadius: 12,
+    padding: 10,
+    gap: 8,
+  },
+  metaRow: {
+    color: "#D6E2F5",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  uploadZone: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 16,
+    gap: 6,
+    minHeight: 132,
+  },
+  uploadZoneEmpty: {
+    backgroundColor: "#0B1627",
+    borderColor: "#2A3A56",
+  },
+  uploadZoneFilled: {
+    backgroundColor: "#102037",
+    borderColor: "#35547A",
+  },
+  uploadTitle: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  uploadSubtitle: {
+    color: "#9CB0CC",
+    fontSize: 12,
+    textAlign: "center",
+  },
+  adjustSection: {
+    backgroundColor: "#111C30",
+    borderWidth: 1,
+    borderColor: "#1F2E46",
+    borderRadius: 16,
+    padding: 12,
+    gap: 8,
+  },
+  sectionTitle: {
+    color: "#F2F6FF",
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  sliderLabel: {
+    color: "#D6E2F5",
+    fontSize: 13,
+    marginTop: 6,
+  },
+  convertedWrap: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#1F2E46",
+    gap: 10,
+  },
+  convertedTitle: {
+    color: "#F2F6FF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  convertedActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+});
