@@ -10,6 +10,9 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
       "bundleIdentifier": "com.hagoodj2.sounddnaapi"
     },
     "android": {

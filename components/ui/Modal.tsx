@@ -1,7 +1,6 @@
 import React from "react";
-import { Modal, View, StyleSheet, Pressable } from "react-native";
+import { Modal, View, StyleSheet } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { IconButton } from "react-native-paper";
 
 type ModalProps = {
   visible: boolean;

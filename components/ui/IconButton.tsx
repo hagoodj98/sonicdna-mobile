@@ -6,6 +6,7 @@ type IconCustomButtonProps = {
   size?: number;
   iconColor?: string;
   onPress?: () => void;
+  disabled?: boolean;
 };
 
 const IconCustomButton = (props: IconCustomButtonProps) => (

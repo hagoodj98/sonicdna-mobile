@@ -18,10 +18,9 @@ const ListAudio = ({
   currentSound,
   uploadAudio,
   audioStatus,
-  audioDrafts: propAudioDrafts,
+  audioDrafts,
   setAudioDrafts: propSetAudioDrafts,
 }: ListAudioProps) => {
-  const drafts = propAudioDrafts; // Use the prop if provided, otherwise use the hook's state
   const setDrafts = propSetAudioDrafts; // Use the prop if provided, otherwise use the hook's state
   const handlePlayAudio = (audio: AudioDraft) => {
     playAudio(audio);
@@ -32,7 +31,7 @@ const ListAudio = ({
 
   return (
     <View style={{ gap: 12 }}>
-      {drafts?.map((audio) => (
+      {audioDrafts?.map((audio) => (
         <View
           style={{
             flexDirection: "row",

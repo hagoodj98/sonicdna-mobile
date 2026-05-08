@@ -29,4 +29,15 @@ describe("API endpoint config", () => {
 
     expect(api.UPLOAD_AUDIO).toBe("http://192.168.1.136:3000/api/submit-audio");
   });
+
+  it("includes the RECONVERT_AUDIO endpoint derived from the base URL", () => {
+    jest.resetModules();
+    process.env.EXPO_PUBLIC_API_BASE_URL = "http://10.0.0.25:3000";
+
+    const api = require("../config/api").default;
+
+    expect(api.RECONVERT_AUDIO).toBe(
+      "http://10.0.0.25:3000/api/reconvert-audio",
+    );
+  });
 });

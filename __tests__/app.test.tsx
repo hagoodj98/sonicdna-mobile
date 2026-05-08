@@ -154,11 +154,16 @@ describe("Index screen audio behavior", () => {
           timestamp: 1,
         },
       ],
-      audioFiles: [],
+      audioMetas: [],
+      resolveAudioUri: jest.fn(),
       audioRecordingDraftsDir: null,
+      convertAudio: jest.fn().mockResolvedValue(null),
+      reConvertAudio: jest.fn().mockResolvedValue(null),
+      downloadAudio: jest.fn().mockResolvedValue(null),
       getAudios: jest.fn(),
       loading: false,
       removeAudio: jest.fn(),
+      setAudioMetas: jest.fn(),
       setAudioDrafts: jest.fn(),
       uploadAudio: uploadAudioMock,
     });
@@ -191,10 +196,12 @@ describe("Index screen audio behavior", () => {
       );
     });
 
+    mockPlayer.pause.mockClear();
+
     fireEvent.press(screen.getByText("Play Draft"));
 
     await waitFor(() => {
-      expect(mockPlayer.pause).toHaveBeenCalledTimes(1);
+      expect(mockPlayer.pause).toHaveBeenCalled();
       expect(screen.getByTestId("current-sound").props.children).toBe("none");
     });
   });

@@ -12,9 +12,27 @@ import SoundCharacteristics from "@/components/SoundCharacteristics";
 import Dashboard from "@/app/dashboard";
 import * as DocumentPicker from "expo-document-picker";
 
+const mockUseAudios = jest.fn();
+const mockUseAudioPlayerControl = jest.fn();
+
 jest.mock("expo-document-picker", () => ({
   getDocumentAsync: jest.fn(),
 }));
+
+jest.mock("@/hooks/useAudios", () => ({
+  useAudios: () => mockUseAudios(),
+}));
+
+jest.mock("@/hooks/useAudioPlayer", () => ({
+  useAudioPlayerControl: () => mockUseAudioPlayerControl(),
+}));
+
+jest.mock("@/components/ui/Picker", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+
+  return () => <View />;
+});
 
 jest.mock("react-native-paper", () => {
   const React = require("react");
@@ -34,6 +52,23 @@ describe("New UI components", () => {
 
   beforeEach(() => {
     getDocumentAsyncMock.mockReset();
+    mockUseAudios.mockReturnValue({
+      audioMetas: [],
+      convertAudio: jest.fn().mockResolvedValue(null),
+      reConvertAudio: jest.fn().mockResolvedValue(null),
+      downloadAudio: jest.fn().mockResolvedValue(null),
+    });
+    mockUseAudioPlayerControl.mockReturnValue({
+      setPlaybackUri: jest.fn(),
+      player: {
+        pause: jest.fn(),
+        play: jest.fn(),
+        seekTo: jest.fn(),
+      },
+      status: {
+        didJustFinish: false,
+      },
+    });
   });
 
   it("renders Header with provided title", () => {
@@ -64,7 +99,7 @@ describe("New UI components", () => {
   it("renders dashboard source and target columns", () => {
     render(<Dashboard />);
 
-    expect(screen.getByText("DNA Source")).toBeTruthy();
+    expect(screen.getByText("Source DNA")).toBeTruthy();
     expect(screen.getByText("Target Audio")).toBeTruthy();
     expect(screen.getByText("Import Audio")).toBeTruthy();
   });
@@ -96,7 +131,7 @@ describe("New UI components", () => {
       });
       expect(screen.getByText("Audio Selected")).toBeTruthy();
       expect(screen.getByText("my-voice-note.mp3")).toBeTruthy();
-      expect(screen.getByText("Ready to transform")).toBeTruthy();
+      expect(screen.queryByText("Import Audio")).toBeNull();
     });
   });
 });
