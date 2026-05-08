@@ -35,3 +35,32 @@ export type SoundProfile = {
   tone?: string;
   mood?: string;
 };
+export type PickerDocfileType = {
+  name: string;
+  uri: string;
+  mimeType: string;
+  size: number;
+};
+
+export type ConversionPlan = {
+  tempoRatio: number;
+  pitchShiftSemitones: number;
+  gainDb: number;
+  targetBPM: number;
+  minTempoBpm: number;
+  maxTempoBpm: number;
+  minPitchShiftSemitones: number;
+  maxPitchShiftSemitones: number;
+  minGainDb: number;
+  maxGainDb: number;
+};
+
+export type SliderRange = Pick<
+  ConversionPlan,
+  "tempoRatio" | "pitchShiftSemitones" | "gainDb"
+>;
+export type ConvertAudioResponse = {
+  message: string;
+  convertedAudioUri: string | null;
+  conversionPlan: ConversionPlan;
+};

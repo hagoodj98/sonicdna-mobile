@@ -16,6 +16,9 @@ export const useAudioPlayerControl = (initialPlaybackUri: string | null) => {
     }
 
     try {
+      console.log("trying to play");
+      console.log("playbackUri:", playbackUri);
+
       player.seekTo(0);
       player.play();
     } catch (error) {

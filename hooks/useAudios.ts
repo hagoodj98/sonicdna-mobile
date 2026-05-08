@@ -1,14 +1,32 @@
 import { useCallback, useEffect, useState } from "react";
-import API_ENDPOINTS from "../config/api";
+import API_ENDPOINTS, { BASE_URL } from "../config/api";
 import { Directory, File, Paths } from "expo-file-system";
-import { AudioDraft, AudioUploadFileType, SoundProfile } from "../types";
-
+import {
+  AudioDraft,
+  AudioUploadFileType,
+  SoundProfile,
+  PickerDocfileType,
+  ConvertAudioResponse,
+} from "../types";
 export const useAudios = () => {
   const [audioMetas, setAudioMetas] = useState<SoundProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [audioDrafts, setAudioDrafts] = useState<AudioDraft[]>([]); //in memory drafts of audio files that haven't been submitted yet
   const [audioRecordingDraftsDir, setAudioRecordingDraftsDir] =
     useState<Directory | null>(null);
+
+  const resolveAudioUri = useCallback((uri: string | null | undefined) => {
+    if (!uri) {
+      return null;
+    }
+
+    if (/^[a-z]+:\/\//i.test(uri)) {
+      return uri;
+    }
+
+    return `${BASE_URL}${uri.startsWith("/") ? uri : `/${uri}`}`;
+  }, []);
+
   const getAudios = useCallback(async () => {
     setLoading(true);
     // Fetch audio elements from the API
@@ -108,6 +126,49 @@ export const useAudios = () => {
       return null;
     }
   }, []);
+  const convertAudio = useCallback(
+    async (
+      audioFileId: string,
+      file: PickerDocfileType,
+    ): Promise<ConvertAudioResponse | null> => {
+      try {
+        if (!audioFileId) {
+          return null;
+        }
+
+        const sourceUrl = `${API_ENDPOINTS.CONVERT_AUDIO}/${audioFileId}`;
+
+        const formData = new FormData();
+        formData.append("audio", {
+          uri: file.uri,
+          name: file.name,
+          type: file.mimeType,
+          size: file.size,
+        } as AudioUploadFileType);
+
+        const response = await fetch(sourceUrl, {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to convert audio: ${response.statusText}`);
+        }
+
+        const result = (await response.json()) as ConvertAudioResponse;
+        result.convertedAudioUri = resolveAudioUri(result.convertedAudioUri);
+        console.log("Audio converted successfully:", result);
+        return result;
+      } catch (error) {
+        console.error("Error converting audio:", error);
+        return null;
+      }
+    },
+    [resolveAudioUri],
+  );
   useEffect(() => {
     const loadAudioDrafts = async () => {
       const audioRecordingsDir = new Directory(Paths.cache, "audioRecordings");
@@ -149,6 +210,7 @@ export const useAudios = () => {
     getAudios,
     uploadAudio,
     setAudioMetas,
+    convertAudio,
     downloadAudio,
     audioRecordingDraftsDir,
     loading,
