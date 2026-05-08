@@ -47,6 +47,7 @@ export type ConversionPlan = {
   pitchShiftSemitones: number;
   gainDb: number;
   targetBPM: number;
+  importedTempoBpm?: number;
   minTempoBpm: number;
   maxTempoBpm: number;
   minPitchShiftSemitones: number;
@@ -55,10 +56,10 @@ export type ConversionPlan = {
   maxGainDb: number;
 };
 
-export type SliderRange = Pick<
+export type ReconvertRequestValues = Pick<
   ConversionPlan,
-  "tempoRatio" | "pitchShiftSemitones" | "gainDb"
->;
+  "targetBPM" | "pitchShiftSemitones" | "gainDb"
+> & { importedTempoBpm?: number };
 export type ConvertAudioResponse = {
   message: string;
   convertedAudioUri: string | null;

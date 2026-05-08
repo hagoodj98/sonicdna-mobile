@@ -6,6 +6,7 @@ import {
   AudioUploadFileType,
   SoundProfile,
   PickerDocfileType,
+  ReconvertRequestValues,
   ConvertAudioResponse,
 } from "../types";
 export const useAudios = () => {
@@ -169,6 +170,57 @@ export const useAudios = () => {
     },
     [resolveAudioUri],
   );
+  const reConvertAudio = useCallback(
+    async (
+      audioFileId: string,
+      file: PickerDocfileType,
+      sliderValues: ReconvertRequestValues,
+    ): Promise<ConvertAudioResponse | null> => {
+      try {
+        if (!audioFileId) {
+          return null;
+        }
+
+        const sourceUrl =
+          `${API_ENDPOINTS.RECONVERT_AUDIO}/${audioFileId}` +
+          `?targetBPM=${encodeURIComponent(sliderValues.targetBPM)}` +
+          `&pitchShiftSemitones=${encodeURIComponent(sliderValues.pitchShiftSemitones)}` +
+          `&gainDb=${encodeURIComponent(sliderValues.gainDb)}` +
+          (sliderValues.importedTempoBpm !== undefined
+            ? `&importedTempoBpm=${encodeURIComponent(sliderValues.importedTempoBpm)}`
+            : ``);
+
+        const formData = new FormData();
+        formData.append("audio", {
+          uri: file.uri,
+          name: file.name,
+          type: file.mimeType,
+          size: file.size,
+        } as AudioUploadFileType);
+
+        const response = await fetch(sourceUrl, {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to re-convert audio: ${response.statusText}`);
+        }
+
+        const result = (await response.json()) as ConvertAudioResponse;
+        result.convertedAudioUri = resolveAudioUri(result.convertedAudioUri);
+        console.log("Audio re-converted successfully:", result);
+        return result;
+      } catch (error) {
+        console.error("Error re-converting audio:", error);
+        return null;
+      }
+    },
+    [resolveAudioUri],
+  );
   useEffect(() => {
     const loadAudioDrafts = async () => {
       const audioRecordingsDir = new Directory(Paths.cache, "audioRecordings");
@@ -211,6 +263,7 @@ export const useAudios = () => {
     uploadAudio,
     setAudioMetas,
     convertAudio,
+    reConvertAudio,
     downloadAudio,
     audioRecordingDraftsDir,
     loading,

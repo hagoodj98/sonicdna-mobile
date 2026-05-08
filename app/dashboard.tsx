@@ -23,19 +23,31 @@ export default function Dashboard() {
   const [downloadedAudioUri, setDownloadedAudioUri] = useState<string | null>(
     null,
   );
-  const [sliderRanges, setSliderRanges] = useState({
-    bpm: { min: 0, max: 0 },
-    bpmValue: 0,
-    gainDb: { min: 0, max: 0 },
-    gainDbValue: 0,
-    pitchShiftSemitones: { min: 0, max: 0 },
-    pitchShiftValue: 0,
+  const sliderRanges = {
+    bpm: { min: 40, max: 180 },
+    gainDb: { min: -12, max: 12 },
+    pitchShiftSemitones: { min: -12, max: 12 },
+  };
+  const [sliderValues, setSliderValues] = useState({
+    bpm: 0,
+    gainDb: 0,
+    pitchShiftSemitones: 0,
   });
+  const [lastAppliedSliderValues, setLastAppliedSliderValues] = useState<{
+    bpm: number;
+    gainDb: number;
+    pitchShiftSemitones: number;
+  } | null>(null);
+  const [importedTempoBpm, setImportedTempoBpm] = useState<number | undefined>(undefined);
+
   const [isImportedPlaying, setIsImportedPlaying] = useState(false);
   const [isImportSelected, setIsImportSelected] = useState(false);
-  const { audioMetas, downloadAudio, convertAudio } = useAudios();
+  const { audioMetas, reConvertAudio, downloadAudio, convertAudio } =
+    useAudios();
   const [audioSelected, setAudioSelected] = useState<SoundProfile | null>(null);
   const [isCoversionResultVisible, setIsConversionResultVisible] =
+    useState(false);
+  const [isReConversionResultVisible, setIsReConversionResultVisible] =
     useState(false);
   const [isDNASoundPlaying, setIsDNASoundPlaying] = useState(false);
   const { setPlaybackUri, player, status } = useAudioPlayerControl(null);
@@ -79,35 +91,24 @@ export default function Dashboard() {
   const handleConversion = () => {
     setIsLoading(true);
     if (isImportSelected && audioSelectedDownloaded) {
-      if (!importedAudio)
+      if (!importedAudio) {
+        setIsLoading(false);
         return Alert.alert("No audio file imported for conversion");
+      }
       convertAudio(audioSelected?.audioFileId || "", importedAudio).then(
         (conversionResult) => {
           if (conversionResult) {
             setIsConversionResultVisible(true);
             setConvertedAudioUri(conversionResult.convertedAudioUri);
-            setSliderRanges({
-              bpm: {
-                min: conversionResult.conversionPlan.minTempoBpm,
-                max: conversionResult.conversionPlan.maxTempoBpm,
-              },
-              bpmValue: conversionResult.conversionPlan.targetBPM,
-              pitchShiftSemitones: {
-                min: conversionResult.conversionPlan.minPitchShiftSemitones,
-                max: conversionResult.conversionPlan.maxPitchShiftSemitones,
-              },
-              pitchShiftValue:
+            const appliedValues = {
+              bpm: conversionResult.conversionPlan.targetBPM,
+              pitchShiftSemitones:
                 conversionResult.conversionPlan.pitchShiftSemitones,
-              gainDb: {
-                min: conversionResult.conversionPlan.minGainDb,
-                max: conversionResult.conversionPlan.maxGainDb,
-              },
-              gainDbValue: conversionResult.conversionPlan.gainDb,
-            });
-            Alert.alert(
-              "Profile Applied",
-              `Tempo ratio: ${conversionResult.conversionPlan.tempoRatio.toFixed(3)}\nPitch shift (semitones): ${conversionResult.conversionPlan.pitchShiftSemitones.toFixed(2)}\nGain (dB): ${conversionResult.conversionPlan.gainDb.toFixed(2)}`,
-            );
+              gainDb: conversionResult.conversionPlan.gainDb,
+            };
+            setSliderValues(appliedValues);
+            setLastAppliedSliderValues(appliedValues);
+            setImportedTempoBpm(conversionResult.conversionPlan.importedTempoBpm);
           } else {
             Alert.alert("Failed to convert audio");
           }
@@ -131,8 +132,19 @@ export default function Dashboard() {
     if (audioSelected) {
       setAudioSelectedDownloaded(false); // Reset the downloaded state when a new audio is selected
       setDownloadedAudioUri(null);
+      setConvertedAudioUri(null);
+      setIsConversionResultVisible(false);
+      setIsConvertedPlaying(false);
     }
   }, [audioSelected]);
+
+  useEffect(() => {
+    if (importedAudio?.uri) {
+      setConvertedAudioUri(null);
+      setIsConversionResultVisible(false);
+      setIsConvertedPlaying(false);
+    }
+  }, [importedAudio?.uri]);
   const handleDownloadAudio = () => {
     setIsLoading(true);
     downloadAudio(audioSelected?.audioFileId || "").then((uri) => {
@@ -145,7 +157,39 @@ export default function Dashboard() {
       setIsLoading(false);
     });
   };
+  const handleReConversion = () => {
+    setIsLoading(true);
+    if (isImportSelected && audioSelectedDownloaded) {
+      if (!importedAudio) {
+        setIsLoading(false);
+        return Alert.alert("No audio file imported for reconversion");
+      }
+      reConvertAudio(audioSelected?.audioFileId || "", importedAudio, {
+        targetBPM: sliderValues?.bpm || 0,
+        pitchShiftSemitones: sliderValues?.pitchShiftSemitones || 0,
+        gainDb: sliderValues?.gainDb || 0,
+        importedTempoBpm,
+      }).then((reConversionResult) => {
+        if (reConversionResult) {
+          setIsConversionResultVisible(false); // Hide the original conversion result sliders and values when showing the reconversion results to avoid confusion for the user between the original conversion parameters and the new reconversion parameters, which helps provide a clearer user experience by only displaying the relevant transformation parameters based on whether the user is viewing the original conversion results or the new reconversion results after adjusting the sliders and applying the changes.
+          setIsReConversionResultVisible(true);
+          const reAppliedValues = {
+            bpm: reConversionResult.conversionPlan.targetBPM,
+            pitchShiftSemitones:
+              reConversionResult.conversionPlan.pitchShiftSemitones,
+            gainDb: reConversionResult.conversionPlan.gainDb,
+          };
+          setSliderValues(reAppliedValues);
+          setLastAppliedSliderValues(reAppliedValues);
 
+          setConvertedAudioUri(reConversionResult.convertedAudioUri);
+        } else {
+          Alert.alert("Failed to re-convert audio");
+        }
+        setIsLoading(false);
+      });
+    }
+  };
   const handleShareConvertedAudio = async () => {
     try {
       if (!convertedAudioUri) {
@@ -198,6 +242,11 @@ export default function Dashboard() {
       setIsSharing(false);
     }
   };
+  useEffect(() => {
+    console.log(sliderValues, "slider");
+    console.log(sliderValues, "reslider");
+    console.log("values");
+  }, [sliderValues]);
 
   useEffect(() => {
     if (status.didJustFinish) {
@@ -249,6 +298,7 @@ export default function Dashboard() {
                   icon={isDNASoundPlaying ? "pause" : "play"}
                   iconColor="#4DD9FF"
                   size={26}
+                  disabled={isLoading}
                   onPress={() => {
                     if (downloadedAudioUri) {
                       if (isDNASoundPlaying) {
@@ -269,6 +319,7 @@ export default function Dashboard() {
                 icon={isLoading ? "loading" : "download"}
                 iconColor="#9B6BFF"
                 size={26}
+                disabled={isLoading}
                 onPress={handleDownloadAudio}
               />
             ) : null}
@@ -313,6 +364,7 @@ export default function Dashboard() {
                   icon={isImportedPlaying ? "pause" : "play"}
                   iconColor="#4DD9FF"
                   size={26}
+                  disabled={isLoading}
                   onPress={() => {
                     if (importedAudio?.uri) {
                       if (isImportedPlaying) {
@@ -363,6 +415,7 @@ export default function Dashboard() {
               <Pressable
                 onPress={handlePickAudio}
                 testID="target-audio-picker"
+                disabled={isLoading}
                 style={{
                   flex: 1,
                   borderRadius: 14,
@@ -378,6 +431,7 @@ export default function Dashboard() {
                 <IconCustomButton
                   icon="upload"
                   iconColor="#9B6BFF"
+                  disabled={isLoading}
                   size={importedAudio?.name ? 25 : 34}
                 />
                 <Text
@@ -416,7 +470,15 @@ export default function Dashboard() {
             <Slider
               minimumValue={sliderRanges.pitchShiftSemitones.min}
               maximumValue={sliderRanges.pitchShiftSemitones.max}
-              value={sliderRanges.pitchShiftValue}
+              value={sliderValues.pitchShiftSemitones}
+              onValueChange={(value) =>
+                setSliderValues((prev) => ({
+                  ...prev,
+                  pitchShiftSemitones: value,
+                }))
+              }
+              step={0.1}
+              disabled={isLoading}
               minimumTrackTintColor="#4DD9FF"
               maximumTrackTintColor="#3A4561"
               thumbTintColor="#9B6BFF"
@@ -425,8 +487,15 @@ export default function Dashboard() {
             <Slider
               minimumValue={sliderRanges.bpm.min}
               maximumValue={sliderRanges.bpm.max}
-              value={sliderRanges.bpmValue}
-              renderStepNumber
+              value={sliderValues.bpm}
+              onValueChange={(value) =>
+                setSliderValues((prev) => ({
+                  ...prev,
+                  bpm: value,
+                }))
+              }
+              step={1}
+              disabled={isLoading}
               minimumTrackTintColor="#4DD9FF"
               maximumTrackTintColor="#3A4561"
               thumbTintColor="#9B6BFF"
@@ -437,8 +506,15 @@ export default function Dashboard() {
             <Slider
               minimumValue={sliderRanges.gainDb.min}
               maximumValue={sliderRanges.gainDb.max}
-              value={sliderRanges.gainDbValue}
-              renderStepNumber
+              value={sliderValues.gainDb}
+              onValueChange={(value) =>
+                setSliderValues((prev) => ({
+                  ...prev,
+                  gainDb: value,
+                }))
+              }
+              step={0.1}
+              disabled={isLoading}
               minimumTrackTintColor="#4DD9FF"
               maximumTrackTintColor="#3A4561"
               thumbTintColor="#9B6BFF"
@@ -459,6 +535,7 @@ export default function Dashboard() {
                     icon={isConvertedPlaying ? "pause" : "play"}
                     iconColor="#4DD9FF"
                     size={26}
+                    disabled={isLoading}
                     onPress={() => {
                       if (isConvertedPlaying) {
                         player.pause();
@@ -470,11 +547,135 @@ export default function Dashboard() {
                       setIsConvertedPlaying(true);
                     }}
                   />
+
                   <IconCustomButton
                     icon={isSharing ? "loading" : "share-variant"}
                     iconColor="#4DD9FF"
                     size={26}
+                    disabled={isLoading}
                     onPress={isSharing ? undefined : handleShareConvertedAudio}
+                  />
+                  <CustomButton
+                    title={isLoading ? "Re-Applying DNA..." : "Re-Apply DNA"}
+                    onPress={handleReConversion}
+                    //also disable the button if the slider values are the same as the original conversion plan values to prevent unnecessary reconversion requests to the server when the user hasn't made any changes to the transformation parameters, which helps optimize performance and reduce server load by only allowing reconversion when there are actual changes to apply based on the user's adjustments to the sliders.
+                    disabled={
+                      isLoading ||
+                      (lastAppliedSliderValues !== null &&
+                        sliderValues.bpm === lastAppliedSliderValues.bpm &&
+                        sliderValues.pitchShiftSemitones === lastAppliedSliderValues.pitchShiftSemitones &&
+                        sliderValues.gainDb === lastAppliedSliderValues.gainDb)
+                    }
+                  />
+                </View>
+              </Card>
+            )}
+          </View>
+        )}
+        {isReConversionResultVisible && (
+          <View style={{ marginTop: 16 }}>
+            <Text style={{ color: "#FFFFFF", textAlign: "center" }}>
+              Pitch Ratio
+            </Text>
+            <Slider
+              minimumValue={sliderRanges.pitchShiftSemitones.min}
+              maximumValue={sliderRanges.pitchShiftSemitones.max}
+              value={sliderValues?.pitchShiftSemitones || 0}
+              onValueChange={(value) =>
+                setSliderValues((prev) => ({
+                  ...prev,
+                  pitchShiftSemitones: value,
+                }))
+              }
+              step={0.1}
+              disabled={isLoading}
+              minimumTrackTintColor="#4DD9FF"
+              maximumTrackTintColor="#3A4561"
+              thumbTintColor="#9B6BFF"
+            />
+            <Text style={{ color: "#FFFFFF", textAlign: "center" }}>BPM</Text>
+            <Slider
+              minimumValue={sliderRanges.bpm.min}
+              maximumValue={sliderRanges.bpm.max}
+              value={sliderValues?.bpm || 0}
+              onValueChange={(value) =>
+                setSliderValues((prev) => ({
+                  ...prev,
+                  bpm: value,
+                }))
+              }
+              step={1}
+              disabled={isLoading}
+              minimumTrackTintColor="#4DD9FF"
+              maximumTrackTintColor="#3A4561"
+              thumbTintColor="#9B6BFF"
+            />
+            <Text style={{ color: "#FFFFFF", textAlign: "center" }}>
+              Gain (dB)
+            </Text>
+            <Slider
+              minimumValue={sliderRanges.gainDb.min}
+              maximumValue={sliderRanges.gainDb.max}
+              value={sliderValues?.gainDb || 0}
+              onValueChange={(value) =>
+                setSliderValues((prev) => ({
+                  ...prev,
+                  gainDb: value,
+                }))
+              }
+              step={0.1}
+              disabled={isLoading}
+              minimumTrackTintColor="#4DD9FF"
+              maximumTrackTintColor="#3A4561"
+              thumbTintColor="#9B6BFF"
+            />
+            {convertedAudioUri && (
+              <Card>
+                <Text style={{ color: "#FFFFFF", margin: 10 }}>
+                  Converted Audio
+                </Text>
+                <View
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <IconCustomButton
+                    icon={isConvertedPlaying ? "pause" : "play"}
+                    iconColor="#4DD9FF"
+                    size={26}
+                    disabled={isLoading}
+                    onPress={() => {
+                      if (isConvertedPlaying) {
+                        player.pause();
+                        setPlaybackUri(null);
+                        setIsConvertedPlaying(false);
+                        return;
+                      }
+                      setPlaybackUri(convertedAudioUri);
+                      setIsConvertedPlaying(true);
+                    }}
+                  />
+
+                  <IconCustomButton
+                    icon={isSharing ? "loading" : "share-variant"}
+                    iconColor="#4DD9FF"
+                    size={26}
+                    disabled={isLoading}
+                    onPress={isSharing ? undefined : handleShareConvertedAudio}
+                  />
+                  <CustomButton
+                    title={isLoading ? "Re-Applying DNA..." : "Re-Apply DNA"}
+                    onPress={handleReConversion}
+                    //also disable the button if the slider values are the same as the original conversion plan values to prevent unnecessary reconversion requests to the server when the user hasn't made any changes to the transformation parameters, which helps optimize performance and reduce server load by only allowing reconversion when there are actual changes to apply based on the user's adjustments to the sliders.
+                    disabled={
+                      isLoading ||
+                      (lastAppliedSliderValues !== null &&
+                        sliderValues.bpm === lastAppliedSliderValues.bpm &&
+                        sliderValues.pitchShiftSemitones === lastAppliedSliderValues.pitchShiftSemitones &&
+                        sliderValues.gainDb === lastAppliedSliderValues.gainDb)
+                    }
                   />
                 </View>
               </Card>
@@ -485,6 +686,7 @@ export default function Dashboard() {
           <CustomButton
             title={isLoading ? "Converting..." : "Apply DNA"}
             onPress={handleConversion}
+            disabled={isLoading}
           />
         ) : null}
       </View>

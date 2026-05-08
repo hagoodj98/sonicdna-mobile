@@ -5,5 +5,6 @@ const API_ENDPOINTS = {
   GET_AUDIO_METADATA: `${BASE_URL}/api/get-audio`,
   DOWNLOAD_AUDIO: `${BASE_URL}/api/stream-audio`, // This endpoint is not currently used in the app, but can be used to download audio files if needed
   CONVERT_AUDIO: `${BASE_URL}/api/convert-audio`, // This endpoint is not currently used in the app, but can be used to convert audio files if needed
+  RECONVERT_AUDIO: `${BASE_URL}/api/reconvert-audio`, // This endpoint is not currently used in the app, but can be used to re-apply DNA conversion to audio files if needed
 };
 export default API_ENDPOINTS;
