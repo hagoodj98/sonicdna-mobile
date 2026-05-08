@@ -258,6 +258,7 @@ export const useAudios = () => {
   return {
     audioMetas,
     addAudio,
+    resolveAudioUri,
     removeAudio,
     getAudios,
     uploadAudio,
