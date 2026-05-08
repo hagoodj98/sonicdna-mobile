@@ -7,8 +7,10 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
+  Animated,
+  useWindowDimensions,
 } from "react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as DocumentPicker from "expo-document-picker";
 import * as Sharing from "expo-sharing";
 import { Directory, File, Paths } from "expo-file-system";
@@ -38,6 +40,10 @@ const initialSliderValues: SliderValues = {
 };
 
 export default function Dashboard() {
+  const { width } = useWindowDimensions();
+  const isWideLayout = width >= 900;
+  const adjustmentsAnim = useRef(new Animated.Value(0)).current;
+
   const [importedAudio, setImportedAudio] = useState<PickerDocfileType | null>(
     null,
   );
@@ -81,6 +87,14 @@ export default function Dashboard() {
 
   const showAdjustments =
     isCoversionResultVisible || isReConversionResultVisible;
+
+  const sourceStatus = audioSelectedDownloaded
+    ? "Ready"
+    : audioSelected
+      ? "Selected"
+      : "Missing";
+  const targetStatus = importedAudio?.name ? "Ready" : "Missing";
+  const outputStatus = convertedAudioUri ? "Ready" : "Waiting";
 
   const stopAllPlayback = useCallback(() => {
     player.pause();
@@ -143,7 +157,8 @@ export default function Dashboard() {
 
       const appliedValues = {
         bpm: conversionResult.conversionPlan.targetBPM,
-        pitchShiftSemitones: conversionResult.conversionPlan.pitchShiftSemitones,
+        pitchShiftSemitones:
+          conversionResult.conversionPlan.pitchShiftSemitones,
         gainDb: conversionResult.conversionPlan.gainDb,
       };
       setSliderValues(appliedValues);
@@ -317,6 +332,14 @@ export default function Dashboard() {
     stopAllPlayback();
   }, [status.didJustFinish, stopAllPlayback]);
 
+  useEffect(() => {
+    Animated.timing(adjustmentsAnim, {
+      toValue: showAdjustments ? 1 : 0,
+      duration: showAdjustments ? 240 : 140,
+      useNativeDriver: true,
+    }).start();
+  }, [adjustmentsAnim, showAdjustments]);
+
   return (
     <View style={styles.screen}>
       <Header title="Sound DNA API" />
@@ -325,12 +348,40 @@ export default function Dashboard() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.heroBanner}>
+          <Text style={styles.heroEyebrow}>Sound DNA Lab</Text>
+          <Text style={styles.heroTitle}>
+            Match your target to the source profile
+          </Text>
+          <Text style={styles.heroSubtitle}>
+            Pick a source DNA, import a target track, then tune pitch, BPM, and
+            gain until it feels right.
+          </Text>
+
+          <View style={styles.statusRow}>
+            <View style={styles.statusPill}>
+              <Text style={styles.statusLabel}>Source</Text>
+              <Text style={styles.statusValue}>{sourceStatus}</Text>
+            </View>
+            <View style={styles.statusPill}>
+              <Text style={styles.statusLabel}>Target</Text>
+              <Text style={styles.statusValue}>{targetStatus}</Text>
+            </View>
+            <View style={styles.statusPill}>
+              <Text style={styles.statusLabel}>Output</Text>
+              <Text style={styles.statusValue}>{outputStatus}</Text>
+            </View>
+          </View>
+        </View>
+
         <View style={styles.pickerWrap}>
           <Picker audioMetas={audioMetas} getValue={handleAudioMetaData} />
         </View>
 
-        <View style={styles.panelGrid}>
-          <View style={styles.panel}>
+        <View
+          style={[styles.panelGrid, isWideLayout ? styles.panelGridWide : null]}
+        >
+          <View style={[styles.panel, isWideLayout ? styles.panelWide : null]}>
             <View style={styles.panelHeaderRow}>
               <Text style={styles.panelTitle}>Source DNA</Text>
               {audioSelectedDownloaded ? (
@@ -367,17 +418,25 @@ export default function Dashboard() {
             </View>
 
             <View style={styles.metaGrid}>
-              <Text style={styles.metaRow}>Audio Name: {audioSelected?.audioName || "-"}</Text>
-              <Text style={styles.metaRow}>BPM: {audioSelected?.tempoBpm || "-"}</Text>
+              <Text style={styles.metaRow}>
+                Audio Name: {audioSelected?.audioName || "-"}
+              </Text>
+              <Text style={styles.metaRow}>
+                BPM: {audioSelected?.tempoBpm || "-"}
+              </Text>
               <Text style={styles.metaRow}>
                 Energy Level: {audioSelected?.energyLevel || "-"}
               </Text>
-              <Text style={styles.metaRow}>Tone: {audioSelected?.tone || "-"}</Text>
-              <Text style={styles.metaRow}>Mood: {audioSelected?.mood || "-"}</Text>
+              <Text style={styles.metaRow}>
+                Tone: {audioSelected?.tone || "-"}
+              </Text>
+              <Text style={styles.metaRow}>
+                Mood: {audioSelected?.mood || "-"}
+              </Text>
             </View>
           </View>
 
-          <View style={styles.panel}>
+          <View style={[styles.panel, isWideLayout ? styles.panelWide : null]}>
             <View style={styles.panelHeaderRow}>
               <Text style={styles.panelTitle}>Target Audio</Text>
               {importedAudio?.name ? (
@@ -432,17 +491,37 @@ export default function Dashboard() {
                   {importedAudio.name}
                 </Text>
               ) : (
-                <Text style={styles.uploadSubtitle}>Tap to choose a target track</Text>
+                <Text style={styles.uploadSubtitle}>
+                  Tap to choose a target track
+                </Text>
               )}
             </Pressable>
           </View>
         </View>
 
         {showAdjustments ? (
-          <View style={styles.adjustSection}>
+          <Animated.View
+            style={[
+              styles.adjustSection,
+              {
+                opacity: adjustmentsAnim,
+                transform: [
+                  {
+                    translateY: adjustmentsAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [12, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
             <Text style={styles.sectionTitle}>Adjustment Controls</Text>
 
             <Text style={styles.sliderLabel}>Pitch Shift (semitones)</Text>
+            <Text style={styles.sliderValue}>
+              {sliderValues.pitchShiftSemitones.toFixed(1)} st
+            </Text>
             <Slider
               minimumValue={sliderRanges.pitchShiftSemitones.min}
               maximumValue={sliderRanges.pitchShiftSemitones.max}
@@ -461,6 +540,9 @@ export default function Dashboard() {
             />
 
             <Text style={styles.sliderLabel}>Target BPM</Text>
+            <Text style={styles.sliderValue}>
+              {Math.round(sliderValues.bpm)} bpm
+            </Text>
             <Slider
               minimumValue={sliderRanges.bpm.min}
               maximumValue={sliderRanges.bpm.max}
@@ -479,6 +561,9 @@ export default function Dashboard() {
             />
 
             <Text style={styles.sliderLabel}>Gain (dB)</Text>
+            <Text style={styles.sliderValue}>
+              {sliderValues.gainDb.toFixed(1)} dB
+            </Text>
             <Slider
               minimumValue={sliderRanges.gainDb.min}
               maximumValue={sliderRanges.gainDb.max}
@@ -534,7 +619,7 @@ export default function Dashboard() {
                 />
               </View>
             ) : null}
-          </View>
+          </Animated.View>
         ) : null}
 
         {isImportSelected && audioSelectedDownloaded ? (
@@ -558,11 +643,65 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 14,
     paddingBottom: 28,
-    gap: 14,
+    gap: 12,
+  },
+  heroBanner: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#2A3550",
+    backgroundColor: "#131F35",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 6,
+  },
+  heroEyebrow: {
+    color: "#FFB36E",
+    textTransform: "uppercase",
+    fontSize: 11,
+    letterSpacing: 1,
+    fontWeight: "700",
+  },
+  heroTitle: {
+    color: "#F7FAFF",
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: "800",
+  },
+  heroSubtitle: {
+    color: "#AFBED8",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  statusRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 4,
+  },
+  statusPill: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#2C3E61",
+    backgroundColor: "#0D1729",
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    gap: 2,
+  },
+  statusLabel: {
+    color: "#7F95B7",
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    fontWeight: "700",
+  },
+  statusValue: {
+    color: "#EAF1FF",
+    fontSize: 12,
+    fontWeight: "700",
   },
   pickerWrap: {
     borderRadius: 14,
-    backgroundColor: "#111C30",
+    backgroundColor: "#101B2E",
     borderWidth: 1,
     borderColor: "#1F2E46",
     padding: 10,
@@ -570,14 +709,22 @@ const styles = StyleSheet.create({
   panelGrid: {
     gap: 12,
   },
+  panelGridWide: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    justifyContent: "space-between",
+  },
   panel: {
-    backgroundColor: "#111C30",
+    backgroundColor: "#101B2E",
     borderWidth: 1,
     borderColor: "#1F2E46",
     borderRadius: 16,
-    padding: 12,
+    padding: 14,
     minHeight: 210,
-    gap: 12,
+    gap: 10,
+  },
+  panelWide: {
+    flex: 1,
   },
   panelHeaderRow: {
     flexDirection: "row",
@@ -586,9 +733,9 @@ const styles = StyleSheet.create({
   },
   panelTitle: {
     color: "#F2F6FF",
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "700",
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   metaGrid: {
     backgroundColor: "#0B1627",
@@ -634,23 +781,28 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   adjustSection: {
-    backgroundColor: "#111C30",
+    backgroundColor: "#101B2E",
     borderWidth: 1,
     borderColor: "#1F2E46",
     borderRadius: 16,
-    padding: 12,
+    padding: 14,
     gap: 8,
   },
   sectionTitle: {
     color: "#F2F6FF",
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
     marginBottom: 4,
   },
   sliderLabel: {
     color: "#D6E2F5",
     fontSize: 13,
-    marginTop: 6,
+    marginTop: 8,
+  },
+  sliderValue: {
+    color: "#89A3C8",
+    fontSize: 12,
+    marginBottom: -2,
   },
   convertedWrap: {
     marginTop: 10,
