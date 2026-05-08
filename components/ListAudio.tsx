@@ -31,62 +31,77 @@ const ListAudio = ({
 
   return (
     <View style={{ gap: 12 }}>
-      {audioDrafts?.map((audio) => (
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            backgroundColor: "#161C2D",
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: "#252D42",
-            paddingVertical: 10,
-            paddingHorizontal: 16,
-            minHeight: 64,
-          }}
-          key={audio.id}
-        >
-          <Text
+      {audioDrafts &&
+        audioDrafts.map((audio) => (
+          <View
             style={{
-              flex: 1,
-              color: "#FFFFFF",
-              fontSize: 15,
-              fontWeight: "500",
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "#161C2D",
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: "#252D42",
+              paddingVertical: 10,
+              paddingHorizontal: 16,
+              minHeight: 64,
             }}
-            numberOfLines={1}
+            key={audio.id}
           >
-            {audio.label}
-          </Text>
-          <IconButton
-            icon={currentSound === audio.id ? "pause" : "play"}
-            iconColor="#4DD9FF"
-            size={26}
-            onPress={() => {
-              handlePlayAudio(audio);
-            }}
-          />
-          <IconButton
-            icon="upload"
-            iconColor="#9B6BFF"
-            size={26}
-            onPress={() => {
-              handleUploadAudio(audio);
-            }}
-          />
-          <IconButton
-            icon="delete"
-            iconColor="#E05252"
-            size={26}
-            onPress={() => {
-              const fileToDelete = new File(audio.localUri);
-              fileToDelete.delete();
-              setDrafts?.((prevDrafts) =>
-                prevDrafts.filter((draft) => draft.id !== audio.id),
-              );
-            }}
-          />
-        </View>
-      ))}
+            <Text
+              style={{
+                flex: 1,
+                color: "#FFFFFF",
+                fontSize: 15,
+                fontWeight: "500",
+              }}
+              numberOfLines={1}
+            >
+              {audio.label}
+            </Text>
+            <IconButton
+              icon={currentSound === audio.id ? "pause" : "play"}
+              iconColor="#4DD9FF"
+              size={26}
+              onPress={() => {
+                handlePlayAudio(audio);
+              }}
+            />
+            <IconButton
+              icon="upload"
+              iconColor="#9B6BFF"
+              size={26}
+              onPress={() => {
+                handleUploadAudio(audio);
+              }}
+            />
+            <IconButton
+              icon="delete"
+              iconColor="#E05252"
+              size={26}
+              onPress={() => {
+                const fileToDelete = new File(audio.localUri);
+                fileToDelete.delete();
+                setDrafts?.((prevDrafts) =>
+                  prevDrafts.filter((draft) => draft.id !== audio.id),
+                );
+              }}
+            />
+          </View>
+        ))}
+      {audioDrafts?.length === 0 && (
+        <Text
+          style={{
+            height: 64,
+            textAlign: "center",
+            textAlignVertical: "center",
+            color: "#7F95B7",
+            fontSize: 14,
+            fontStyle: "italic",
+          }}
+        >
+          No audio drafts yet. Record something to see it here!
+        </Text>
+      )}
     </View>
   );
 };

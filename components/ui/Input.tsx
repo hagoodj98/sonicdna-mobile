@@ -1,7 +1,7 @@
 import { SafeAreaView } from "react-native-safe-area-context";
-import { TextInput, StyleSheet } from "react-native";
+import { TextInput } from "react-native";
 import React, { useState } from "react";
-
+import { inputStyles } from "@/styles/styles";
 type InputProps = {
   value: string;
   onChangeText: (text: string) => void;
@@ -22,7 +22,8 @@ const Input = ({ value, onChangeText, style, readOnly }: InputProps) => {
           onChangeText(newText);
         }}
         style={{
-          ...styles.input,
+          ...inputStyles.input,
+          ...style,
           borderColor: "#252D42",
           borderRadius: 10,
           backgroundColor: "#0B0F1A",
@@ -34,14 +35,4 @@ const Input = ({ value, onChangeText, style, readOnly }: InputProps) => {
   );
 };
 
-const styles = StyleSheet.create({
-  input: {
-    height: 44,
-    margin: 12,
-    width: 220,
-    borderWidth: 1,
-    padding: 10,
-    fontSize: 15,
-  },
-});
 export default Input;

@@ -18,8 +18,10 @@ import { IconButton } from "react-native-paper";
 import Header from "@/components/Header";
 import { useAudioPlayerControl } from "@/hooks/useAudioPlayer";
 import { useAudioRecorderHook } from "@/hooks/useAudioRecorder";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 export default function Index() {
+  const tabBarHeight = useBottomTabBarHeight();
   // Enable audio recording and playback
   const { recorderState, stopRecording, startRecording } =
     useAudioRecorderHook();
@@ -94,7 +96,6 @@ export default function Index() {
     }
 
     if (audio) {
-      console.log(`Playing audio from URI: ${audio.localUri}`); // Log the audio URI for debugging purposes
       setCurrentToPlayAudioDraft(audio.id); // Set the currentToPlayAudioDraft state to the ID of the audio draft that is being played
       setPlaybackUri(audio.localUri);
     }
@@ -184,7 +185,7 @@ export default function Index() {
         <View
           style={{
             alignItems: "center",
-            paddingBottom: 36,
+            paddingBottom: tabBarHeight + 12,
             paddingTop: 20,
             borderTopWidth: 1,
             borderTopColor: "#1E2739",
