@@ -1,5 +1,8 @@
 import { renderHook, act } from "@testing-library/react-native";
 
+// Module under test
+import { useAudios } from "@/hooks/useAudios";
+
 // jest.mock is hoisted above variable declarations, so the factory must be
 // entirely self-contained (no references to outer variables).
 jest.mock("expo-file-system", () => ({
@@ -11,9 +14,6 @@ jest.mock("expo-file-system", () => ({
   File: jest.fn().mockImplementation(() => ({ uri: "file:///mock" })),
   Paths: { cache: "/mock/cache" },
 }));
-
-// Module under test
-import { useAudios } from "@/hooks/useAudios";
 
 // Attach the fetch mock after the module is imported so it intercepts all calls.
 const mockFetch = jest.fn();
@@ -102,8 +102,12 @@ describe("useAudios — resolveAudioUri", () => {
 
   it("prepends BASE_URL with a slash to a relative path not starting with /", () => {
     const { result } = renderHook(() => useAudios());
-    const resolved = result.current.resolveAudioUri("api/stream-temp-audio/file.wav");
-    expect(resolved).toMatch(/^http:\/\/.+\/api\/stream-temp-audio\/file\.wav$/);
+    const resolved = result.current.resolveAudioUri(
+      "api/stream-temp-audio/file.wav",
+    );
+    expect(resolved).toMatch(
+      /^http:\/\/.+\/api\/stream-temp-audio\/file\.wav$/,
+    );
   });
 });
 
