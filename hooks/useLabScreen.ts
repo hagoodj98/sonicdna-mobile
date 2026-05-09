@@ -1,11 +1,13 @@
 import { useAudioPlayerControl } from "@/hooks/useAudioPlayer";
 import { useAudios } from "@/hooks/useAudios";
 import { PickerDocfileType, SliderValues, SoundProfile } from "@/types";
+import { validateImportedAudioFileSchema } from "@/utils/inputValidation";
 import { Directory, File, Paths } from "expo-file-system";
 import * as DocumentPicker from "expo-document-picker";
 import * as Sharing from "expo-sharing";
 import { Alert, Animated } from "react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { z } from "zod";
 
 export const sliderRanges = {
   bpm: { min: 40, max: 180 },
@@ -101,8 +103,15 @@ export function useLabScreen() {
       if (result.canceled || !result.assets?.length) {
         return;
       }
-
+      // We only allow picking one file, so we take the first one from the assets array
       const selectedAudio = result.assets[0];
+      // Validate the selected audio file's metadata
+      validateImportedAudioFileSchema.parse({
+        originalname: selectedAudio.name || "",
+        mimetype: selectedAudio.mimeType || "",
+        size: selectedAudio.size || 0,
+      });
+
       setIsImportSelected(true);
       setImportedAudio(
         selectedAudio.uri
@@ -115,6 +124,14 @@ export function useLabScreen() {
           : null,
       );
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        Alert.alert(
+          "Invalid imported audio",
+          error.issues[0]?.message || "Please choose a valid audio file.",
+        );
+        return;
+      }
+
       console.error("Error picking audio file:", error);
     }
   }, []);

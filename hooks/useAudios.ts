@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import API_ENDPOINTS, { BASE_URL } from "../config/api";
 import { Directory, File, Paths } from "expo-file-system";
+import { Alert } from "react-native";
 import {
   AudioDraft,
   AudioUploadFileType,
@@ -9,6 +10,11 @@ import {
   ReconvertRequestValues,
   ConvertAudioResponse,
 } from "../types";
+import {
+  MAX_AUDIO_FILE_SIZE_BYTES,
+  validateAudioFile,
+} from "@/utils/inputValidation";
+import { z } from "zod";
 export const useAudios = () => {
   const [audioMetas, setAudioMetas] = useState<SoundProfile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,12 +71,32 @@ export const useAudios = () => {
   const uploadAudio = useCallback(
     async (uriToUpload: string, titleAudioFile: string, audio: AudioDraft) => {
       try {
+        const localAudioFile = new File(uriToUpload);
+        const audioSize =
+          typeof localAudioFile.size === "number"
+            ? localAudioFile.size
+            : undefined;
+
+        if (
+          typeof audioSize === "number" &&
+          audioSize > MAX_AUDIO_FILE_SIZE_BYTES
+        ) {
+          Alert.alert(
+            "Recording too large",
+            "Please keep recordings under 1MB.",
+          );
+          return;
+        }
+
         const formData = new FormData();
         formData.append("audio", {
           uri: uriToUpload, // Set the URI of the recorded audio file
           name: titleAudioFile, // Set a name for the audio file
           type: "audio/m4a", // Set the MIME type of the audio file
+          size: audioSize,
         } as AudioUploadFileType); // Append the recorded audio file to the form data
+
+        validateAudioFile.parse({ file: formData }); // Validate the audio file before attempting to upload it to ensure it meets the required criteria (e.g., file type, size limits) and provide early feedback if the file is invalid
 
         const response = await fetch(`${API_ENDPOINTS.UPLOAD_AUDIO}`, {
           method: "POST",
@@ -84,10 +110,18 @@ export const useAudios = () => {
           throw new Error(`Failed to upload audio: ${response.statusText}`);
         }
 
-        const result = await response.json();
+        //const result = await response.json();
         removeAudioDraft(audio.id); // Remove the audio draft from the in-memory state after successful upload
       } catch (error) {
-        console.error("Error uploading audio:", error);
+        if (error instanceof z.ZodError) {
+          Alert.alert(
+            "Invalid audio file",
+            error.issues[0]?.message || "Please select a valid audio file.",
+          );
+          console.error("Validation error:", error.issues);
+        } else {
+          console.error("Error uploading audio:", error);
+        }
       }
     },
     [removeAudioDraft],
