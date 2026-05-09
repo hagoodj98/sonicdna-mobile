@@ -163,8 +163,7 @@ export default function Index() {
           "Invalid name",
           "The audio file name must be 3-20 characters long and can only contain letters, numbers, spaces, underscores, and hyphens.",
         ); // Alert the user if the input value for the audio file name is invalid according to the validation schema defined in the validateAudioName function
-      }
-      if (error instanceof Error) {
+      } else if (error instanceof Error) {
         console.error(error);
       } else {
         Alert.alert("An unexpected error occurred. Please try again later."); // Alert the user if an unexpected error occurs during submission
