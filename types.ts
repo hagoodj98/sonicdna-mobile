@@ -16,6 +16,7 @@ export type AudioUploadFileType = Blob & {
   uri: string;
   name: string;
   type: string;
+  size?: number;
 };
 
 export type AudioPlayerContextType = {

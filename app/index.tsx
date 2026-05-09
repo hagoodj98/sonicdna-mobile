@@ -7,7 +7,7 @@ import {
   Pressable,
 } from "react-native";
 import { AudioModule, setAudioModeAsync } from "expo-audio";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import OffCanvas from "../components/ListAudio";
 import CustomButton from "../components/ui/CustomButton";
 import { useAudios } from "@/hooks/useAudios";
@@ -19,12 +19,18 @@ import Header from "@/components/Header";
 import { useAudioPlayerControl } from "@/hooks/useAudioPlayer";
 import { useAudioRecorderHook } from "@/hooks/useAudioRecorder";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { validateAudioName } from "@/utils/inputValidation";
+import { z } from "zod";
 
 export default function Index() {
   const tabBarHeight = useBottomTabBarHeight();
   // Enable audio recording and playback
-  const { recorderState, stopRecording, startRecording } =
-    useAudioRecorderHook();
+  const {
+    recorderState,
+    stopRecording,
+    startRecording,
+    MAX_RECORDING_DURATION_MS,
+  } = useAudioRecorderHook();
   // State to hold the URI of the recorded audio
   const [currentToPlayAudioDraft, setCurrentToPlayAudioDraft] = useState<
     string | null
@@ -114,41 +120,77 @@ export default function Index() {
   };
   const handleAudioSubmission = async () => {
     setIsFormSubmitting(true); // Set the form submitting state to true to disable the upload button and prevent multiple submissions while the audio file is being uploaded
-    if (uriToUpload && titleAudioFile) {
-      const audioDraft = audioDrafts.find(
-        (draft) => draft.localUri === uriToUpload,
-      );
-      if (audioDraft) {
-        await uploadAudio(uriToUpload, titleAudioFile, audioDraft);
+    try {
+      validateAudioName.parse(titleAudioFile); // Validate the input value for the audio file name before allowing submission to ensure it meets the required criteria and alert the user if it is invalid
+
+      if (uriToUpload && titleAudioFile) {
+        const audioDraft = audioDrafts.find(
+          (draft) => draft.localUri === uriToUpload,
+        );
+        if (audioDraft) {
+          await uploadAudio(uriToUpload, titleAudioFile, audioDraft);
+        }
+      } else {
+        Alert.alert(
+          "Missing information",
+          "Please provide both the audio file and a name before uploading.",
+        ); // Alert the user if either the audio URI or the title is missing
+        setIsFormSubmitting(false); // Set the form submitting state back to false after the upload is complete to re-enable the upload button for future submissions
+        setIsModalOpen(false); // Close the modal after submission
       }
-    } else {
-      Alert.alert(
-        "Missing information",
-        "Please provide both the audio file and a name before uploading.",
-      ); // Alert the user if either the audio URI or the title is missing
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        Alert.alert(
+          "Invalid name",
+          "The audio file name must be 3-20 characters long and can only contain letters, numbers, spaces, underscores, and hyphens.",
+        ); // Alert the user if the input value for the audio file name is invalid according to the validation schema defined in the validateAudioName function
+      }
+      if (error instanceof Error) {
+        console.error(error);
+      } else {
+        Alert.alert("An unexpected error occurred. Please try again later."); // Alert the user if an unexpected error occurs during submission
+      }
+    } finally {
       setIsFormSubmitting(false); // Set the form submitting state back to false after the upload is complete to re-enable the upload button for future submissions
       setIsModalOpen(false); // Close the modal after submission
     }
   };
 
-  const handleStoppedRecording = async () => {
-    const audioFile = await stopRecording();
-    if (!audioFile) {
-      return;
-    }
-    setAudioDrafts((prevDrafts) => [
-      ...prevDrafts,
-      {
-        id: audioFile.name,
-        label: audioFile.name, // Set a label for the audio draft, you can customize this as needed
-        localUri: audioFile.uri,
-        timestamp: Date.now(),
-        status: "draft",
-        duration: recorderState.durationMillis ?? 0,
-      },
-    ]);
-    // Stop recording if it's currently recording
-  };
+  const handleStoppedRecording = useCallback(
+    async (ignore?: boolean) => {
+      const audioFile = await stopRecording(ignore); // Stop recording and get the URI of the recorded audio file
+      if (!audioFile) {
+        return;
+      }
+
+      setAudioDrafts((prevDrafts) => [
+        ...prevDrafts,
+        {
+          id: audioFile.name,
+          label: audioFile.name, // Set a label for the audio draft, you can customize this as needed
+          localUri: audioFile.uri,
+          timestamp: Date.now(),
+          status: "draft",
+          duration: recorderState.durationMillis ?? 0,
+        },
+      ]);
+    },
+    [recorderState.durationMillis, setAudioDrafts, stopRecording],
+  );
+
+  useEffect(() => {
+    //stop recording if it exceed 20 seconds and update the duration of the audio draft in the in-memory state to the actual duration of the recorded audio using the durationMillis property from the recorderState returned by the useAudioRecorderHook custom hook to ensure that the duration is accurate and reflects the actual length of the recorded audio for better user experience and to provide more accurate information about the audio drafts in the UI
+    if (recorderState.isRecording && recorderState.durationMillis)
+      if (recorderState.durationMillis >= MAX_RECORDING_DURATION_MS) {
+        handleStoppedRecording(true); // Pass true to indicate that the recording was stopped automatically due to exceeding the duration limit
+      }
+  }, [
+    MAX_RECORDING_DURATION_MS,
+    handleStoppedRecording,
+    recorderState.durationMillis,
+    recorderState.isRecording,
+    stopRecording,
+  ]);
 
   useEffect(() => {
     if (!isModalOpen) {
@@ -195,7 +237,7 @@ export default function Index() {
           <Pressable
             onPress={
               recorderState.isRecording
-                ? handleStoppedRecording
+                ? () => handleStoppedRecording()
                 : startRecording
             }
             style={({ pressed }) => ({

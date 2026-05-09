@@ -8,8 +8,8 @@ import {
 import { Pressable, StyleSheet, Text } from "react-native";
 import Header from "@/components/Header";
 import Card from "@/components/ui/Card";
-import SoundCharacteristics from "@/components/SoundCharacteristics";
 import Dashboard from "@/app/lab";
+import SourceAudioPanel from "@/components/lab/SourceAudioPanel";
 import * as DocumentPicker from "expo-document-picker";
 
 const mockUseAudios = jest.fn();
@@ -133,13 +133,25 @@ describe("New UI components", () => {
     expect(screen.getByText("Card content")).toBeTruthy();
   });
 
-  it("renders SoundCharacteristics labels", () => {
-    render(<SoundCharacteristics />);
+  it("renders source panel metadata labels", () => {
+    render(
+      <SourceAudioPanel
+        audioSelected={null}
+        audioSelectedDownloaded={false}
+        downloadedAudioUri={null}
+        isDNASoundPlaying={false}
+        isLoading={false}
+        isWideLayout={false}
+        onDownload={jest.fn()}
+        onStopPlayback={jest.fn()}
+        onPlaySource={jest.fn()}
+      />,
+    );
 
-    expect(screen.getByText("Audio Name ")).toBeTruthy();
-    expect(screen.getByText("BPM: ")).toBeTruthy();
-    expect(screen.getByText("Energy: ")).toBeTruthy();
-    expect(screen.getByText("Tone: ")).toBeTruthy();
+    expect(screen.getByText("Audio Name: -")).toBeTruthy();
+    expect(screen.getByText("BPM: -")).toBeTruthy();
+    expect(screen.getByText("Energy Level: -")).toBeTruthy();
+    expect(screen.getByText("Tone: -")).toBeTruthy();
   });
 
   it("renders dashboard source and target columns", () => {

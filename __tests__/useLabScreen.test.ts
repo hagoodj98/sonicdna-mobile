@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
+import { MAX_IMPORTED_AUDIO_FILE_SIZE_BYTES } from "@/utils/inputValidation";
 
 import { useLabScreen } from "../hooks/useLabScreen";
 
@@ -209,5 +210,34 @@ describe("useLabScreen", () => {
     );
     expect(result.current.outputStatus).toBe("Ready");
     expect(result.current.sliderValues.bpm).toBe(121);
+  });
+
+  it("blocks oversized imported files", async () => {
+    getDocumentAsyncMock.mockResolvedValue({
+      assets: [
+        {
+          mimeType: "audio/mpeg",
+          name: "very-large-target.mp3",
+          size: MAX_IMPORTED_AUDIO_FILE_SIZE_BYTES + 1,
+          uri: "file:///very-large-target.mp3",
+        },
+      ],
+      canceled: false,
+    } as unknown as Awaited<
+      ReturnType<typeof DocumentPicker.getDocumentAsync>
+    >);
+
+    const { result } = renderHook(() => useLabScreen());
+
+    await act(async () => {
+      await result.current.handlePickAudio();
+    });
+
+    expect(result.current.targetStatus).toBe("Missing");
+    expect(result.current.importedAudio).toBeNull();
+    expect(alertSpy).toHaveBeenCalledWith(
+      "Invalid imported audio",
+      "Imported file exceeds 10MB limit.",
+    );
   });
 });
