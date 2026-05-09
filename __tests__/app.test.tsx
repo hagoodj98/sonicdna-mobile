@@ -6,7 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react-native";
 import * as ExpoAudio from "expo-audio";
-import Index from "../app/index";
+import Index from "../app/screens/HomeScreen";
 import { useAudios } from "@/hooks/useAudios";
 
 const mockPlayer = {
@@ -23,8 +23,14 @@ jest.mock("@/hooks/useAudios", () => ({
   useAudios: jest.fn(),
 }));
 
-jest.mock("@react-navigation/bottom-tabs", () => ({
-  useBottomTabBarHeight: jest.fn(() => 72),
+jest.mock("react-native-safe-area-context", () => ({
+  SafeAreaView: require("react-native").View,
+  useSafeAreaInsets: jest.fn(() => ({
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  })),
 }));
 
 jest.mock("react-native-paper", () => {
@@ -53,7 +59,7 @@ jest.mock("@/components/ui/Modal", () => {
   }) => (visible ? <View>{children}</View> : null);
 });
 
-jest.mock("../components/ListAudio", () => {
+jest.mock("@/components/ListAudio", () => {
   const React = require("react");
   const { Pressable, Text, View } = require("react-native");
 
@@ -179,7 +185,7 @@ describe("Index screen audio behavior", () => {
     await waitFor(() => {
       expect(requestPermissionsMock).toHaveBeenCalledTimes(1);
       expect(setAudioModeMock).toHaveBeenCalledWith({
-        allowsRecording: true,
+        allowsRecording: false,
         interruptionMode: "doNotMix",
         playsInSilentMode: true,
         shouldPlayInBackground: true,

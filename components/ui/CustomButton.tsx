@@ -3,7 +3,7 @@ import type { DimensionValue } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 type CustomButtonProps = {
-  title: string;
+  title: string | React.ReactNode;
   onPress: () => void;
   width?: DimensionValue;
   variant?: "primary" | "secondary" | "danger";
@@ -47,7 +47,12 @@ const CustomButton = ({
     >
       {icon && <MaterialCommunityIcons name={icon} size={20} color="#FFFFFF" />}
       <Text
-        style={{ textAlign: "center", color: "#FFFFFF", fontSize: 16, fontWeight: "600" }}
+        style={{
+          textAlign: "center",
+          color: "#FFFFFF",
+          fontSize: 16,
+          fontWeight: "600",
+        }}
       >
         {title}
       </Text>

@@ -8,12 +8,16 @@ import {
 import { Pressable, StyleSheet, Text } from "react-native";
 import Header from "@/components/Header";
 import Card from "@/components/ui/Card";
-import Dashboard from "@/app/lab";
+import Dashboard from "@/app/screens/LabScreen";
 import SourceAudioPanel from "@/components/lab/SourceAudioPanel";
 import * as DocumentPicker from "expo-document-picker";
 
 const mockUseAudios = jest.fn();
 const mockUseAudioPlayerControl = jest.fn();
+
+jest.mock("expo-audio", () => ({
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+}));
 
 jest.mock("expo-document-picker", () => ({
   getDocumentAsync: jest.fn(),

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "sound-dna-api",
-    "slug": "sound-dna-api",
+    "name": "SonicDNA",
+    "slug": "sonicdna",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -46,7 +46,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Allow Sound DNA API to access your microphone to analyze sounds and provide personalized recommendations.",
+          "microphonePermission": "Allow SonicDNA to access your microphone to analyze sounds and provide personalized recommendations.",
           "enableBackgroundPlayback": true,
           "recordAudioAndroid": true,
           "enableBackgroundRecording": true

@@ -192,7 +192,36 @@ export const useAudios = () => {
         }
 
         const result = (await response.json()) as ConvertAudioResponse;
-        result.convertedAudioUri = resolveAudioUri(result.convertedAudioUri);
+        const resolvedUrl = resolveAudioUri(result.convertedAudioUri);
+        
+        // Download converted audio to local cache for iOS compatibility
+        if (resolvedUrl) {
+          try {
+            const convertedCacheDir = new Directory(Paths.cache, "converted-audio");
+            if (!convertedCacheDir.exists) {
+              await convertedCacheDir.create({ idempotent: true });
+            }
+            
+            // Clean up previous converted files
+            const cachedFiles = convertedCacheDir.list();
+            for (const cachedFile of cachedFiles) {
+              cachedFile.delete();
+            }
+            
+            const fileExtension = resolvedUrl.toLowerCase().includes(".wav") ? "wav" : "m4a";
+            const destinationFile = new File(convertedCacheDir, `converted.${fileExtension}`);
+            
+            const downloadedFile = await File.downloadFileAsync(resolvedUrl, destinationFile, {
+              idempotent: true,
+            });
+            
+            result.convertedAudioUri = downloadedFile.uri;
+          } catch (downloadError) {
+            console.error("Failed to cache converted audio, falling back to URL:", downloadError);
+            result.convertedAudioUri = resolvedUrl;
+          }
+        }
+        
         return result;
       } catch (error) {
         console.error("Error converting audio:", error);
@@ -242,7 +271,36 @@ export const useAudios = () => {
         }
 
         const result = (await response.json()) as ConvertAudioResponse;
-        result.convertedAudioUri = resolveAudioUri(result.convertedAudioUri);
+        const resolvedUrl = resolveAudioUri(result.convertedAudioUri);
+        
+        // Download re-converted audio to local cache for iOS compatibility
+        if (resolvedUrl) {
+          try {
+            const convertedCacheDir = new Directory(Paths.cache, "converted-audio");
+            if (!convertedCacheDir.exists) {
+              await convertedCacheDir.create({ idempotent: true });
+            }
+            
+            // Clean up previous converted files
+            const cachedFiles = convertedCacheDir.list();
+            for (const cachedFile of cachedFiles) {
+              cachedFile.delete();
+            }
+            
+            const fileExtension = resolvedUrl.toLowerCase().includes(".wav") ? "wav" : "m4a";
+            const destinationFile = new File(convertedCacheDir, `converted.${fileExtension}`);
+            
+            const downloadedFile = await File.downloadFileAsync(resolvedUrl, destinationFile, {
+              idempotent: true,
+            });
+            
+            result.convertedAudioUri = downloadedFile.uri;
+          } catch (downloadError) {
+            console.error("Failed to cache re-converted audio, falling back to URL:", downloadError);
+            result.convertedAudioUri = resolvedUrl;
+          }
+        }
+        
         return result;
       } catch (error) {
         console.error("Error re-converting audio:", error);

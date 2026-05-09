@@ -23,12 +23,10 @@ export default function TabLayout() {
           marginTop: 4,
         },
         tabBarStyle: {
-          position: "absolute",
           left: 12,
           right: 12,
-          bottom: 12,
+
           height: 64,
-          borderRadius: 18,
           borderTopWidth: 1,
           borderTopColor: TAB_BORDER,
           backgroundColor: TAB_BG,
