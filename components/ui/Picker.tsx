@@ -27,8 +27,6 @@ const CustomPicker = ({ getValue, audioMetas }: PickerProps) => {
   };
 
   if (Platform.OS === "ios") {
-    console.log(audioMetas);
-
     const selectedLabel =
       audioMetas.find((audio) => audio.audioFileId === selectedAudio)
         ?.audioName ?? "Select an audio file";

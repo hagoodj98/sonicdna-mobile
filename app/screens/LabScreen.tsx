@@ -6,6 +6,7 @@ import TargetAudioPanel from "@/components/lab/TargetAudioPanel";
 import { View, ScrollView, useWindowDimensions } from "react-native";
 import React, { useCallback, useEffect } from "react";
 import { setAudioModeAsync } from "expo-audio";
+import { useFocusEffect } from "@react-navigation/native";
 import { ActivityIndicator } from "react-native-paper";
 import CustomButton from "@/components/ui/CustomButton";
 import Picker from "@/components/ui/Picker";
@@ -56,12 +57,19 @@ export default function Dashboard() {
     stopAllPlayback,
     targetStatus,
     hasChangesSinceLastApply,
+    refreshAudioMetas,
   } = useLabScreen();
 
   // Configure playback mode on mount and when screen comes into focus
   useEffect(() => {
     configurePlaybackMode();
   }, [configurePlaybackMode]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshAudioMetas();
+    }, [refreshAudioMetas]),
+  );
 
   // Wrap playback handlers to ensure audio mode is set correctly
   const handlePlaySourceWithMode = useCallback(
