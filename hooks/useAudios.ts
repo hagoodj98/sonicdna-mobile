@@ -9,6 +9,7 @@ import {
   PickerDocfileType,
   ReconvertRequestValues,
   ConvertAudioResponse,
+  uploadResponse,
 } from "../types";
 import {
   MAX_AUDIO_FILE_SIZE_BYTES,
@@ -69,7 +70,11 @@ export const useAudios = () => {
     [audioRecordingDraftsDir],
   );
   const uploadAudio = useCallback(
-    async (uriToUpload: string, titleAudioFile: string, audio: AudioDraft) => {
+    async (
+      uriToUpload: string,
+      titleAudioFile: string,
+      audio: AudioDraft,
+    ): Promise<uploadResponse | undefined> => {
       try {
         const localAudioFile = new File(uriToUpload);
         const audioSize =
@@ -110,7 +115,8 @@ export const useAudios = () => {
           throw new Error(`Failed to upload audio: ${response.statusText}`);
         }
 
-        //const result = await response.json();
+        const result = await response.json();
+        addAudio(result.soundProfile); // Update the in-memory audioMetas state with the new sound profile obtained from the uploadAudio function after successfully uploading the audio file and creating a sound profile in the database to ensure that the UI is updated with the new audio file and its metadata without needing to refetch all audio files from the database
         removeAudioDraft(audio.id); // Remove the audio draft from the in-memory state after successful upload
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -124,7 +130,7 @@ export const useAudios = () => {
         }
       }
     },
-    [removeAudioDraft],
+    [addAudio, removeAudioDraft],
   );
   const downloadAudio = useCallback(async (audioFileId: string) => {
     try {

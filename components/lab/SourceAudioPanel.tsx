@@ -1,5 +1,6 @@
 import React from "react";
 import { Text, View } from "react-native";
+import { ActivityIndicator } from "react-native-paper";
 import Waveform from "@/components/ui/Waveform";
 import IconCustomButton from "@/components/ui/IconButton";
 import { SoundProfile } from "@/types";
@@ -60,13 +61,21 @@ export default function SourceAudioPanel({
             />
           </View>
         ) : audioSelected ? (
-          <IconCustomButton
-            icon={isLoading ? "loading" : "download"}
-            iconColor="#FF7A3D"
-            size={24}
-            disabled={isLoading}
-            onPress={onDownload}
-          />
+          isLoading ? (
+            <ActivityIndicator
+              animating={true}
+              color="#FF7A3D"
+              size="small"
+              hidesWhenStopped={true}
+            />
+          ) : (
+            <IconCustomButton
+              icon="download"
+              iconColor="#FF7A3D"
+              size={24}
+              onPress={onDownload}
+            />
+          )
         ) : null}
       </View>
 

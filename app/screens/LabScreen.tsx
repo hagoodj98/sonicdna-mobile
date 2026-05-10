@@ -6,6 +6,7 @@ import TargetAudioPanel from "@/components/lab/TargetAudioPanel";
 import { View, ScrollView, useWindowDimensions } from "react-native";
 import React, { useCallback, useEffect } from "react";
 import { setAudioModeAsync } from "expo-audio";
+import { ActivityIndicator } from "react-native-paper";
 import CustomButton from "@/components/ui/CustomButton";
 import Picker from "@/components/ui/Picker";
 import { sliderRanges, useLabScreen } from "@/hooks/useLabScreen";
@@ -151,11 +152,20 @@ export default function Dashboard() {
         ) : null}
 
         {isImportSelected && audioSelectedDownloaded ? (
-          <CustomButton
-            title={primaryActionTitle}
-            onPress={handlePrimaryAction}
-            disabled={isLoading || !hasChangesSinceLastApply}
-          />
+          isLoading ? (
+            <ActivityIndicator
+              animating={true}
+              color="#FF7A3D"
+              size="large"
+              hidesWhenStopped={true}
+            />
+          ) : (
+            <CustomButton
+              title={primaryActionTitle}
+              onPress={handlePrimaryAction}
+              disabled={!hasChangesSinceLastApply}
+            />
+          )
         ) : null}
       </ScrollView>
     </View>

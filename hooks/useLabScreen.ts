@@ -7,6 +7,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as Sharing from "expo-sharing";
 import { Alert, Animated } from "react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { z } from "zod";
 
 export const sliderRanges = {
@@ -63,9 +64,16 @@ export function useLabScreen() {
   const [isConvertedPlaying, setIsConvertedPlaying] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
-  const { audioMetas, reConvertAudio, downloadAudio, convertAudio } =
+  const { audioMetas, reConvertAudio, downloadAudio, convertAudio, getAudios } =
     useAudios();
   const { setPlaybackUri, status } = useAudioPlayerControl(null);
+
+  // Refetch audioMetas whenever the LabScreen tab is focused to catch uploads from HomeScreen
+  useFocusEffect(
+    useCallback(() => {
+      getAudios();
+    }, [getAudios]),
+  );
 
   const hasChangesSinceLastApply =
     lastAppliedSliderValues === null ||

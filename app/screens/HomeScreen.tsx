@@ -14,7 +14,7 @@ import { useAudios } from "@/hooks/useAudios";
 import { AudioDraft } from "@/types";
 import ModalCustom from "@/components/ui/Modal";
 import Input from "@/components/ui/Input";
-import { IconButton } from "react-native-paper";
+import { ActivityIndicator, IconButton } from "react-native-paper";
 import Header from "@/components/Header";
 import { useAudioPlayerControl } from "@/hooks/useAudioPlayer";
 import { useAudioRecorderHook } from "@/hooks/useAudioRecorder";
@@ -115,7 +115,6 @@ export default function Index() {
     if (currentToPlayAudioDraft === audio?.id) {
       player.pause();
       setCurrentToPlayAudioDraft(null);
-      //
       setPlaybackUri(null);
       return;
     }
@@ -138,8 +137,9 @@ export default function Index() {
     }
   };
   const handleAudioSubmission = async () => {
-    setIsFormSubmitting(true); // Set the form submitting state to true to disable the upload button and prevent multiple submissions while the audio file is being uploaded
     try {
+      setIsFormSubmitting(true); // Set the form submitting state to true to disable the upload button and prevent multiple submissions while the audio file is being uploaded
+
       validateAudioName.parse(titleAudioFile); // Validate the input value for the audio file name before allowing submission to ensure it meets the required criteria and alert the user if it is invalid
 
       if (uriToUpload && titleAudioFile) {
@@ -424,7 +424,23 @@ export default function Index() {
             }}
           >
             <CustomButton
-              title={isFormSubmitting ? "Uploading…" : "Upload"}
+              title={
+                isFormSubmitting ? (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <Text style={{ color: "#fff" }}>Uploading…</Text>
+
+                    <ActivityIndicator size={20} color="#fff" />
+                  </View>
+                ) : (
+                  "Upload"
+                )
+              }
               width="48%"
               onPress={handleAudioSubmission}
               disabled={isFormSubmitting}

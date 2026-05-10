@@ -6,8 +6,7 @@ SonicDNA is an Expo React Native app for recording, importing, and transforming 
 
 - Node.js 20+
 - npm 10+
-- Xcode (for iOS simulator) and/or Android Studio (for Android emulator)
-- Expo Go app (optional, for physical device testing)
+- Expo Go app on your phone
 
 ## Setup
 
@@ -17,17 +16,15 @@ SonicDNA is an Expo React Native app for recording, importing, and transforming 
 npm install
 ```
 
-2. Start Expo:
+2. Start the Metro bundler for Expo Go:
 
 ```bash
-npx expo start
+npm run start:ios:go
 ```
 
-3. For physical iOS devices on different networks, start with tunnel mode:
+3. Scan the QR code in Expo Go on your iPhone or Android device.
 
-```bash
-npx expo start --tunnel
-```
+This workflow does not require paid Apple Developer enrollment.
 
 ## Common Commands
 
@@ -43,23 +40,20 @@ npm run doctor
 - `app/`: Expo Router routes and screens
 - `components/`: UI and feature components
 - `hooks/`: audio workflows and screen logic
-- `styles/`: shared style sheets
 - `config/`: API endpoint configuration
 - `__tests__/`: unit and integration tests
 
 ## Branding
 
 - App name: SonicDNA
-- Expo slug: sonicdna
+- Expo slug: sound-dna-api
 
 ## Build and CI
 
 - EAS profiles are defined in `eas.json`
-- CI workflows are in `.github/workflows/`
 
 Useful local build commands:
 
 ```bash
-npm run eas:build:preview
-npm run eas:build:production
+npm run start:ios:go
 ```

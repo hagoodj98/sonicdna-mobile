@@ -42,6 +42,10 @@ export type PickerDocfileType = {
   mimeType: string;
   size: number;
 };
+export type uploadResponse = {
+  message: string;
+  soundProfile: SoundProfile;
+};
 
 export type ConversionPlan = {
   tempoRatio: number;
