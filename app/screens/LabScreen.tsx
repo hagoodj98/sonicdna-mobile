@@ -4,9 +4,9 @@ import LabHero from "@/components/lab/LabHero";
 import SourceAudioPanel from "@/components/lab/SourceAudioPanel";
 import TargetAudioPanel from "@/components/lab/TargetAudioPanel";
 import { View, ScrollView, useWindowDimensions } from "react-native";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useContext, useEffect } from "react";
 import { setAudioModeAsync } from "expo-audio";
-import { useFocusEffect } from "@react-navigation/native";
+import { NavigationContext } from "@react-navigation/native";
 import { ActivityIndicator } from "react-native-paper";
 import CustomButton from "@/components/ui/CustomButton";
 import Picker from "@/components/ui/Picker";
@@ -16,6 +16,7 @@ import { labPageStyles } from "@/styles/styles";
 export default function Dashboard() {
   const { width } = useWindowDimensions();
   const isWideLayout = width >= 900;
+  const navigation = useContext(NavigationContext);
 
   const configurePlaybackMode = useCallback(async () => {
     await setAudioModeAsync({
@@ -57,19 +58,29 @@ export default function Dashboard() {
     stopAllPlayback,
     targetStatus,
     hasChangesSinceLastApply,
-    refreshAudioMetas,
+    refreshAudioMetas: refreshAudioMetasFromHook,
   } = useLabScreen();
+
+  const refreshAudioMetas = useCallback(() => {
+    refreshAudioMetasFromHook?.();
+  }, [refreshAudioMetasFromHook]);
 
   // Configure playback mode on mount and when screen comes into focus
   useEffect(() => {
     configurePlaybackMode();
   }, [configurePlaybackMode]);
 
-  useFocusEffect(
-    useCallback(() => {
-      refreshAudioMetas();
-    }, [refreshAudioMetas]),
-  );
+  useEffect(() => {
+    refreshAudioMetas();
+
+    if (!navigation?.addListener) {
+      return;
+    }
+
+    const unsubscribe = navigation.addListener("focus", refreshAudioMetas);
+
+    return unsubscribe;
+  }, [navigation, refreshAudioMetas]);
 
   // Wrap playback handlers to ensure audio mode is set correctly
   const handlePlaySourceWithMode = useCallback(

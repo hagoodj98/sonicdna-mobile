@@ -44,7 +44,7 @@ jest.mock("@/components/ui/Picker", () => {
 
 jest.mock("react-native-paper", () => {
   const React = require("react");
-  const { Pressable, Text } = require("react-native");
+  const { Pressable, Text, View } = require("react-native");
 
   return {
     IconButton: ({ icon, onPress }: { icon: string; onPress?: () => void }) => (
@@ -52,6 +52,7 @@ jest.mock("react-native-paper", () => {
         <Text>{icon}</Text>
       </Pressable>
     ),
+    ActivityIndicator: () => <View testID="mock-activity-indicator" />,
   };
 });
 
