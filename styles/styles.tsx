@@ -285,11 +285,10 @@ const modalStyles = StyleSheet.create({
 const pickerStyles = StyleSheet.create({
   picker: {
     color: "#FFFFFF",
-    width: 200,
-    alignContent: "center",
-    justifyContent: "center",
+    width: "100%",
+    height: 50,
+    fontSize: 18,
     backgroundColor: "#0B0F1A",
-    borderColor: "#279430",
     borderWidth: 1,
     borderRadius: 10,
   },

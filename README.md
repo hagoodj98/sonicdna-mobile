@@ -1,86 +1,59 @@
-# Welcome to your Expo app 👋
+# SonicDNA Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+SonicDNA is an Expo React Native app for recording, importing, and transforming audio using source profile matching.
 
-## Get started
+## Requirements
 
-1. Install dependencies
+- Node.js 20+
+- npm 10+
+- Expo Go app on your phone
 
-   ```bash
-   npm install
-   ```
+## Setup
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-3. Run the quality checks
-
-   ```bash
-   npm run lint
-   npm run test
-   npm run typecheck
-   npm run doctor
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+1. Install dependencies:
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-## CI and builds
-
-This project uses GitHub Actions for CI in `.github/workflows/ci.yml`.
-
-The CI pipeline runs:
-
-- `npm run lint`
-- `npm run test:ci`
-- `npm run typecheck`
-- `npm run doctor`
-
-This project also includes EAS build profiles in `eas.json` and a GitHub Actions workflow in `.github/workflows/eas-build.yml`.
-
-To use EAS builds:
-
-1. Create an Expo account and log in with `npx eas-cli login`
-2. Initialize the project with `npx eas-cli project:init`
-3. Add `EXPO_TOKEN` as a GitHub Actions repository secret
-4. Trigger the `EAS Build` workflow manually, or push a `v*` tag for a production build
-
-Useful local commands:
+2. Start the Metro bundler for Expo Go:
 
 ```bash
-npm run eas:build:preview
-npm run eas:build:production
+npm run start:ios:go
 ```
 
-To learn more about developing your project with Expo, look at the following resources:
+3. Scan the QR code in Expo Go on your iPhone or Android device.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+This workflow does not require paid Apple Developer enrollment.
 
-## Join the community
+## Common Commands
 
-Join our community of developers creating universal apps.
+```bash
+npm run lint
+npm run test
+npm run typecheck
+npm run doctor
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## App Structure
+
+- `app/`: Expo Router routes and screens
+- `components/`: UI and feature components
+- `hooks/`: audio workflows and screen logic
+- `config/`: API endpoint configuration
+- `__tests__/`: unit and integration tests
+
+## Branding
+
+- App name: SonicDNA
+- Expo slug: sound-dna-api
+
+## Build and CI
+
+- EAS profiles are defined in `eas.json`
+
+Useful local build commands:
+
+```bash
+npm run start:ios:go
+```

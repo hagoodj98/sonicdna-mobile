@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "sound-dna-api",
+    "name": "SonicDNA",
     "slug": "sound-dna-api",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -46,7 +46,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Allow Sound DNA API to access your microphone to analyze sounds and provide personalized recommendations.",
+          "microphonePermission": "Allow SonicDNA to access your microphone to analyze sounds and provide personalized recommendations.",
           "enableBackgroundPlayback": true,
           "recordAudioAndroid": true,
           "enableBackgroundRecording": true
@@ -60,7 +60,9 @@
         }
       ],
       "expo-asset",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-router",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

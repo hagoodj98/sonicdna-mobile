@@ -63,7 +63,7 @@ export function useLabScreen() {
   const [isConvertedPlaying, setIsConvertedPlaying] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
-  const { audioMetas, reConvertAudio, downloadAudio, convertAudio } =
+  const { audioMetas, reConvertAudio, downloadAudio, convertAudio, getAudios } =
     useAudios();
   const { setPlaybackUri, status } = useAudioPlayerControl(null);
 
@@ -437,5 +437,6 @@ export function useLabScreen() {
     targetStatus,
     hasChangesSinceLastApply,
     lastAppliedSliderValues,
+    refreshAudioMetas: getAudios,
   };
 }

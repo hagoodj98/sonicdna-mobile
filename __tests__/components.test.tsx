@@ -8,12 +8,16 @@ import {
 import { Pressable, StyleSheet, Text } from "react-native";
 import Header from "@/components/Header";
 import Card from "@/components/ui/Card";
-import Dashboard from "@/app/lab";
+import Dashboard from "@/app/screens/LabScreen";
 import SourceAudioPanel from "@/components/lab/SourceAudioPanel";
 import * as DocumentPicker from "expo-document-picker";
 
 const mockUseAudios = jest.fn();
 const mockUseAudioPlayerControl = jest.fn();
+
+jest.mock("expo-audio", () => ({
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+}));
 
 jest.mock("expo-document-picker", () => ({
   getDocumentAsync: jest.fn(),
@@ -40,7 +44,7 @@ jest.mock("@/components/ui/Picker", () => {
 
 jest.mock("react-native-paper", () => {
   const React = require("react");
-  const { Pressable, Text } = require("react-native");
+  const { Pressable, Text, View } = require("react-native");
 
   return {
     IconButton: ({ icon, onPress }: { icon: string; onPress?: () => void }) => (
@@ -48,6 +52,7 @@ jest.mock("react-native-paper", () => {
         <Text>{icon}</Text>
       </Pressable>
     ),
+    ActivityIndicator: () => <View testID="mock-activity-indicator" />,
   };
 });
 
