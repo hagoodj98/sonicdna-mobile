@@ -20,6 +20,8 @@ npm install
 
 ```bash
 npm run start:ios:go
+or
+npx expo start
 ```
 
 3. Scan the QR code in Expo Go on your iPhone or Android device.
@@ -50,10 +52,26 @@ npm run doctor
 
 ## Build and CI
 
+- CI runs automatically on push/PR via `.github/workflows/ci.yml` (lint, tests, typecheck, doctor)
+- EAS build workflow is manual-only via `.github/workflows/eas-build.yml`
 - EAS profiles are defined in `eas.json`
+
+### When To Use EAS Builds
+
+- Use EAS builds only for release/demo artifacts
+- Do not use EAS builds for routine code validation
+- For normal development, use Expo Go + CI checks
 
 Useful local build commands:
 
 ```bash
 npm run start:ios:go
 ```
+
+### Manual EAS Build
+
+Run from GitHub Actions only when needed:
+
+1. Open `Actions` in GitHub.
+2. Select `EAS Build`.
+3. Click `Run workflow` and choose profile/platform.

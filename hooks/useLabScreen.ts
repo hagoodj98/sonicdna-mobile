@@ -63,8 +63,14 @@ export function useLabScreen() {
   const [isConvertedPlaying, setIsConvertedPlaying] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
-  const { audioMetas, reConvertAudio, downloadAudio, convertAudio, getAudios } =
-    useAudios();
+  const {
+    audioMetas,
+    reConvertAudio,
+    resolveAudioUri,
+    downloadAudio,
+    convertAudio,
+    getAudios,
+  } = useAudios();
   const { setPlaybackUri, status } = useAudioPlayerControl(null);
 
   const hasChangesSinceLastApply =
@@ -278,8 +284,12 @@ export function useLabScreen() {
         Alert.alert("Sharing is not available on this device");
         return;
       }
-
       setIsSharing(true);
+      const resolvedUrl = resolveAudioUri(convertedAudioUri);
+      if (!resolvedUrl) {
+        Alert.alert("No converted audio available to share");
+        return;
+      }
 
       const sharedAudioDir = new Directory(Paths.cache, "shared-audio");
       if (!sharedAudioDir.exists) {
@@ -290,7 +300,7 @@ export function useLabScreen() {
         cachedFile.delete();
       }
 
-      const fileExtension = convertedAudioUri.toLowerCase().includes(".wav")
+      const fileExtension = resolvedUrl?.toLowerCase().includes(".wav")
         ? "wav"
         : "m4a";
       const destinationFile = new File(
@@ -298,13 +308,16 @@ export function useLabScreen() {
         `sound-dna-converted.${fileExtension}`,
       );
 
-      const downloadedFile = await File.downloadFileAsync(
-        convertedAudioUri,
-        destinationFile,
-        { idempotent: true },
-      );
+      const shareUri =
+        /^[a-z]+:\/\//i.test(resolvedUrl) && !resolvedUrl.startsWith("file://")
+          ? (
+              await File.downloadFileAsync(resolvedUrl, destinationFile, {
+                idempotent: true,
+              })
+            ).uri
+          : resolvedUrl;
 
-      await Sharing.shareAsync(downloadedFile.uri, {
+      await Sharing.shareAsync(shareUri, {
         dialogTitle: "Share converted audio",
         mimeType: fileExtension === "wav" ? "audio/wav" : "audio/m4a",
         UTI: "public.audio",
@@ -315,7 +328,7 @@ export function useLabScreen() {
     } finally {
       setIsSharing(false);
     }
-  }, [convertedAudioUri]);
+  }, [convertedAudioUri, resolveAudioUri]);
 
   const handlePlaySource = useCallback(
     (uri: string) => {
