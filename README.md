@@ -23,7 +23,7 @@ npm run start:ios:go
 or
 npx expo start
 ```
-You can find the server repo at https://github.com/hagoodj98/sound-api-server
+You can find the server repo at https://github.com/hagoodj98/sonicdna-server
 
 3. Scan the QR code in Expo Go on your iPhone or Android device.
 
